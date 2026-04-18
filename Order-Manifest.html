@@ -16,7 +16,7 @@
             --border-strong: #d1d5db;
             --text-primary: #111827;
             --text-secondary: #6b7280;
-            --text-muted: #6b7280;
+            --text-muted: #9ca3af;
             --accent: #2563eb;
             --accent-light: #eff6ff;
             --accent-dark: #1d4ed8;
@@ -95,8 +95,8 @@
         th { text-align: right; padding: 8px; background: var(--surface-2); font-weight: 700; border-bottom: 2px solid var(--border-strong); }
         td { padding: 10px 8px; border-bottom: 1px solid var(--border); }
         
-        .metafield-key { font-weight: 600; color: var(--text-primary); }
-        .metafield-ns { font-size: 10px; color: var(--text-muted); display: block; margin-top: 2px; }
+        .metafield-label { font-weight: 600; color: var(--text-primary); display: block; }
+        .metafield-key { font-size: 10px; color: var(--text-secondary); display: block; margin-top: 2px; }
 
         .settings-btn { background: none; color: var(--text-secondary); border: 1px solid var(--border); padding: 5px 10px; }
         #settingsPanel { display: none; margin-top: 10px; }
@@ -165,6 +165,23 @@
     const LS_URL_KEY = 'orderviewer_worker_url';
     const LS_SEC_KEY = 'orderviewer_worker_secret';
     const LS_FLOW_KEY = 'orderviewer_flow_token';
+
+    // القائمة المرجعية للميتافيلدز اللي عايزين نعرضها دايماً
+    const KNOWN_METAFIELDS = [
+        { key: 'manual_status', label: 'STATUS' },
+        { key: 'payment', label: 'PAYMENT' },
+        { key: 'partial_delivery', label: 'Partial Delivery' },
+        { key: 'zone', label: 'Zone' },
+        { key: 'courier', label: 'Courier' },
+        { key: 'pickup_date', label: 'Pickup Date' },
+        { key: 'bosta_webhook', label: 'Bosta Webhook' },
+        { key: 'bosta_order_type', label: 'Bosta Order Type' },
+        { key: 'bosta_tracking_number', label: 'Bosta Tracking Number' },
+        { key: 'status_2_r_e_', label: 'Status(2) [R&E]' },
+        { key: 'packed_by', label: 'Packed By' },
+        { key: 'packing_date_time', label: 'Packing Date & Time' },
+        { key: 'extra_shipping_fees', label: 'Extra Shipping Fees' }
+    ];
 
     // Load settings on init
     document.getElementById('workerUrl').value = localStorage.getItem(LS_URL_KEY) || '';
@@ -240,6 +257,7 @@
     }
 
     async function addTestTag(orderId, btnElement) {
+        // [نفس الكود الخاص بـ Flow Companion بدون تعديل]
         const flowToken = localStorage.getItem(LS_FLOW_KEY);
         if (!flowToken) {
             showToast('يرجى إضافة Flow Token في الإعدادات', 'error');
@@ -264,8 +282,6 @@
 
             if (res.status === 200) {
                 showToast('تم تشغيل مسار الإضافة بنجاح', 'success');
-                
-                // Optimistic UI Update
                 const tagsContainer = document.getElementById('tagsContainer');
                 if (tagsContainer && !tagsContainer.innerHTML.includes('Test-View')) {
                     const newTag = document.createElement('span');
@@ -298,17 +314,46 @@
 
         const tagsHtml = order.tags.map(t => `<span style="font-size:11px; background:var(--surface-2); border:1px solid var(--border); padding:2px 6px; border-radius:4px;">${t}</span>`).join('');
 
-        const metafieldsHtml = order.metafields && order.metafields.nodes.length > 0 
-            ? order.metafields.nodes.map(mf => `
+        // معالجة الميتافيلدز لمطابقة شكل الأدمن
+        const apiFields = {};
+        if (order.metafields && order.metafields.nodes) {
+            order.metafields.nodes.forEach(mf => {
+                apiFields[mf.key] = mf;
+            });
+        }
+
+        let metafieldsHtml = '';
+        
+        // 1. عرض الحقول المعروفة (سواء مليانة أو فاضية)
+        KNOWN_METAFIELDS.forEach(kf => {
+            const fieldData = apiFields[kf.key];
+            metafieldsHtml += `
                 <tr>
-                    <td>
-                        <span class="metafield-key">${mf.key}</span>
-                        <span class="metafield-ns">Namespace: ${mf.namespace}</span>
+                    <td style="width: 40%;">
+                        <span class="metafield-label">${kf.label}</span>
+                        <span class="metafield-key">${kf.key}</span>
                     </td>
-                    <td class="mono" style="word-break: break-all;">${mf.value || '-'}</td>
+                    <td class="mono" style="word-break: break-all;">
+                        ${fieldData && fieldData.value ? fieldData.value : '<span style="color:var(--text-muted)">-</span>'}
+                    </td>
                 </tr>
-            `).join('')
-            : '<tr><td colspan="2" style="text-align:center; color:var(--text-muted); padding: 16px;">لا توجد Metafields لهذا الأوردر</td></tr>';
+            `;
+            // مسح الحقل من الأوبجيكت بعد عرضه عشان منكرروش
+            if (fieldData) delete apiFields[kf.key];
+        });
+
+        // 2. عرض أي حقول إضافية رجعت من الـ API ومش موجودة في اللستة بتاعتنا
+        Object.values(apiFields).forEach(mf => {
+            metafieldsHtml += `
+                <tr>
+                    <td style="width: 40%;">
+                        <span class="metafield-label">${mf.key}</span>
+                        <span class="metafield-key">${mf.namespace}.${mf.key}</span>
+                    </td>
+                    <td class="mono" style="word-break: break-all;">${mf.value}</td>
+                </tr>
+            `;
+        });
 
         document.getElementById('resultArea').innerHTML = `
             <div class="card">
@@ -356,7 +401,7 @@
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 40%;">الحقل (Key)</th>
+                            <th>الحقل (Label)</th>
                             <th>القيمة (Value)</th>
                         </tr>
                     </thead>
