@@ -3,133 +3,193 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EcomModa | عرض الأوردر</title>
+    <title>EcomModa | مستعرض الطلبات</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+Arabic:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg: #f3f4f6;
-            --surface: #fff;
+            --surface: #ffffff;
             --surface-2: #f9fafb;
             --border: #e5e7eb;
             --border-strong: #d1d5db;
             --text-primary: #111827;
-            --text-secondary: #6b7280;
+            --text-secondary: #4b5563;
             --text-muted: #9ca3af;
             --accent: #2563eb;
+            --accent-hover: #1d4ed8;
             --accent-light: #eff6ff;
-            --accent-dark: #1d4ed8;
-            --radius: 12px;
+            --radius: 16px;
             --radius-sm: 8px;
-            --shadow: 0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             --green: #16a34a;
+            --green-light: #f0fdf4;
             --red: #dc2626;
+            --amber: #d97706;
+            --amber-light: #fffbeb;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        
         body { 
             font-family: 'Noto Sans Arabic', sans-serif; 
             background: var(--bg); 
             color: var(--text-primary);
-            padding: 20px;
-            line-height: 1.5;
+            padding: 32px 20px;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
         }
 
         .mono { font-family: 'IBM Plex Mono', monospace; direction: ltr; display: inline-block; }
 
-        .container { max-width: 600px; margin: 0 auto; }
+        .container { max-width: 768px; margin: 0 auto; }
 
-        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-        h1 { font-size: 17px; font-weight: 700; }
+        /* Header & Settings */
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+        h1 { font-size: 20px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px; }
+        
+        .settings-btn { 
+            background: var(--surface); color: var(--text-secondary); 
+            border: 1px solid var(--border); padding: 8px 16px; 
+            border-radius: var(--radius-sm); font-size: 13px; font-weight: 600;
+            cursor: pointer; box-shadow: var(--shadow-sm); transition: all 0.2s;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .settings-btn:hover { background: var(--surface-2); border-color: var(--border-strong); }
 
+        #settingsPanel { display: none; margin-bottom: 24px; animation: slideDown 0.3s ease-out; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* General Card */
         .card {
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 20px;
-            box-shadow: var(--shadow);
-            margin-bottom: 16px;
+            padding: 24px;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 20px;
         }
 
-        .search-box { display: flex; gap: 8px; margin-bottom: 20px; }
-        input {
-            flex: 1;
-            padding: 10px 14px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            font-size: 14px;
-            font-family: 'IBM Plex Mono', monospace;
-            direction: ltr;
+        /* Search Section */
+        .search-container {
+            display: flex; gap: 12px; margin-bottom: 32px;
+            background: var(--surface); padding: 8px;
+            border-radius: var(--radius); box-shadow: var(--shadow-md);
         }
-        button {
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: var(--radius-sm);
-            font-weight: 600;
-            cursor: pointer;
-            font-size: 13px;
-            transition: opacity 0.2s;
+        .search-container input {
+            flex: 1; padding: 14px 20px; border: none; background: transparent;
+            font-size: 16px; font-family: 'IBM Plex Mono', monospace; direction: ltr;
+            outline: none;
         }
-        button:disabled { opacity: 0.7; cursor: not-allowed; }
+        .search-container input::placeholder { color: var(--text-muted); font-family: 'Noto Sans Arabic', sans-serif; direction: rtl; text-align: right; }
+        .search-container button {
+            background: var(--accent); color: white; border: none;
+            padding: 0 28px; border-radius: var(--radius-sm); font-weight: 600;
+            cursor: pointer; font-size: 15px; transition: background 0.2s;
+        }
+        .search-container button:hover { background: var(--accent-hover); }
 
+        /* Order Layout Modules */
+        .order-header-module {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--border);
+            flex-wrap: wrap; gap: 16px;
+        }
+        .order-title-group { display: flex; flex-direction: column; gap: 8px; }
+        .order-name { font-size: 24px; font-weight: 700; color: var(--text-primary); }
+        .status-pill { 
+            align-self: flex-start; padding: 4px 12px; border-radius: 20px; 
+            font-size: 11px; font-weight: 700; background: var(--surface-2); 
+            border: 1px solid var(--border); color: var(--text-secondary);
+        }
+        
+        .action-group { display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn-primary {
+            background: var(--accent); color: white; border: none;
+            padding: 8px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: 0.2s; box-shadow: var(--shadow-sm);
+        }
+        .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
         .btn-secondary {
-            background: var(--surface);
-            color: var(--text-primary);
-            border: 1px solid var(--border-strong);
-            padding: 6px 12px;
-            font-size: 12px;
+            background: var(--surface); color: var(--text-primary); border: 1px solid var(--border-strong);
+            padding: 8px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: 0.2s; box-shadow: var(--shadow-sm);
         }
         .btn-secondary:hover:not(:disabled) { background: var(--surface-2); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
 
-        .btn-primary-small {
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: var(--radius-sm);
-            font-size: 12px;
-            font-weight: 600;
+        /* Mini-Stats Grid */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-box { 
+            background: var(--surface-2); padding: 16px; border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+        }
+        .stat-label { font-size: 11px; color: var(--text-secondary); font-weight: 700; margin-bottom: 8px; display: block; }
+        .stat-value { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+        .stat-value.highlight { font-size: 18px; color: var(--accent); font-weight: 700; }
+
+        /* Section Titles */
+        .section-title { font-size: 14px; font-weight: 800; color: var(--text-primary); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;}
+        .section-title::before { content: ''; display: block; width: 4px; height: 16px; background: var(--accent); border-radius: 2px; }
+
+        /* Enhanced Tables */
+        .table-container { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 24px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--surface); }
+        th { text-align: right; padding: 12px 16px; background: var(--surface-2); font-weight: 700; color: var(--text-secondary); border-bottom: 1px solid var(--border-strong); }
+        td { padding: 12px 16px; border-bottom: 1px solid var(--border); color: var(--text-primary); }
+        tr:last-child td { border-bottom: none; }
+
+        /* Metafields Grid */
+        .metafields-grid { 
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; 
+            background: var(--surface-2); padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+        .mf-item { display: flex; flex-direction: column; gap: 4px; padding-bottom: 8px; border-bottom: 1px dashed var(--border-strong); }
+        .mf-item:last-child { border-bottom: none; padding-bottom: 0;}
+        .mf-label { font-size: 11px; font-weight: 700; color: var(--text-secondary); }
+        .mf-key { font-size: 10px; color: var(--text-muted); }
+        .mf-value { font-size: 13px; font-weight: 500; word-break: break-all; }
+        .mf-empty { color: var(--text-muted); font-style: italic; }
+
+        /* Tags */
+        .tags-container { display: flex; gap: 8px; flex-wrap: wrap; }
+        .tag-badge { 
+            font-size: 12px; background: #f3f4f6; color: var(--text-secondary); 
+            border: 1px solid var(--border-strong); padding: 4px 10px; 
+            border-radius: 6px; font-weight: 600; 
         }
 
-        .order-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 16px; }
-        .order-name { font-size: 18px; font-weight: 800; }
-        .status-pill { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; background: var(--bg); }
-
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-        .info-item label { display: block; font-size: 10px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
-        .info-item span { font-size: 14px; font-weight: 500; }
-
-        table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px; }
-        th { text-align: right; padding: 8px; background: var(--surface-2); font-weight: 700; border-bottom: 2px solid var(--border-strong); }
-        td { padding: 10px 8px; border-bottom: 1px solid var(--border); }
-        
-        .metafield-label { font-weight: 600; color: var(--text-primary); display: block; }
-        .metafield-key { font-size: 10px; color: var(--text-secondary); display: block; margin-top: 2px; }
-
-        .settings-btn { background: none; color: var(--text-secondary); border: 1px solid var(--border); padding: 5px 10px; }
-        #settingsPanel { display: none; margin-top: 10px; }
-        
-        .error { color: var(--red); font-size: 12px; margin-top: 8px; }
+        /* Inputs */
+        .input-group { margin-bottom: 16px; }
+        .input-group label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 6px; color: var(--text-secondary); }
+        .input-group input { 
+            width: 100%; padding: 10px 14px; border: 1px solid var(--border-strong); 
+            border-radius: var(--radius-sm); font-size: 14px; font-family: 'IBM Plex Mono', monospace; direction: ltr;
+            transition: border-color 0.2s;
+        }
+        .input-group input:focus { border-color: var(--accent); outline: none; }
 
         /* Toast UI */
-        #toast-container { position: fixed; bottom: 20px; left: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 1000; }
-        .toast { padding: 12px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; color: white; box-shadow: var(--shadow); transition: opacity 0.3s ease; }
+        #toast-container { position: fixed; bottom: 24px; left: 24px; display: flex; flex-direction: column; gap: 12px; z-index: 1000; }
+        .toast { padding: 14px 24px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; color: white; box-shadow: var(--shadow-md); transition: opacity 0.3s ease; display: flex; align-items: center; gap: 8px;}
         .toast.success { background: var(--green); }
         .toast.error { background: var(--red); }
         .toast.neutral { background: var(--text-primary); }
 
         /* Confirm Modal UI */
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
-        .modal-overlay.open { display: flex; }
-        .modal-card { background: var(--surface); border-radius: var(--radius); width: 90%; max-width: 400px; padding: 24px; box-shadow: var(--shadow); }
-        .modal-header { font-size: 16px; font-weight: 700; margin-bottom: 12px; color: var(--text-primary); }
-        .modal-body { font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; line-height: 1.6; }
-        .modal-footer { display: flex; gap: 8px; justify-content: flex-end; }
-        .btn-cancel { background: var(--surface-2); border: 1px solid var(--border-strong); color: var(--text-primary); padding: 8px 16px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; font-weight: 600; }
-        .btn-confirm-ok { padding: 8px 16px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; font-weight: 600; color: white; border: none; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(17, 24, 39, 0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+        .modal-overlay.open { display: flex; animation: fadeIn 0.2s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal-card { background: var(--surface); border-radius: var(--radius); width: 90%; max-width: 420px; padding: 32px; box-shadow: var(--shadow-md); transform: translateY(0); animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes slideUp { from { transform: translateY(20px); } to { transform: translateY(0); } }
+        .modal-header { font-size: 18px; font-weight: 800; margin-bottom: 16px; color: var(--text-primary); }
+        .modal-body { font-size: 14px; color: var(--text-secondary); margin-bottom: 32px; line-height: 1.6; }
+        .modal-footer { display: flex; gap: 12px; justify-content: flex-end; }
+        .btn-cancel { background: var(--surface); border: 1px solid var(--border-strong); color: var(--text-primary); padding: 10px 20px; border-radius: var(--radius-sm); cursor: pointer; font-size: 14px; font-weight: 600; }
+        .btn-confirm-ok { padding: 10px 20px; border-radius: var(--radius-sm); cursor: pointer; font-size: 14px; font-weight: 600; color: white; border: none; }
         .btn-confirm-ok.primary { background: var(--accent); }
     </style>
 </head>
@@ -138,35 +198,46 @@
 <div class="container">
     <header>
         <h1>EcomModa | مستعرض الطلبات</h1>
-        <button class="settings-btn" onclick="toggleSettings()">⚙️ الإعدادات</button>
+        <button class="settings-btn" onclick="toggleSettings()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            الإعدادات
+        </button>
     </header>
 
     <div id="settingsPanel" class="card">
-        <div class="info-item" style="margin-bottom: 10px;">
+        <h2 class="section-title">إعدادات الاتصال</h2>
+        <div class="input-group">
             <label>Worker URL</label>
             <input type="text" id="workerUrl" placeholder="https://your-worker.workers.dev">
         </div>
-        <div class="info-item" style="margin-bottom: 10px;">
+        <div class="input-group">
             <label>Worker Secret</label>
             <input type="password" id="workerSecret" placeholder="••••••••">
         </div>
-        <div class="info-item">
+        <div class="input-group">
             <label>Flow Token (Flow Companion)</label>
             <input type="password" id="flowToken" placeholder="••••••••">
         </div>
-        <button onclick="saveSettings()" style="margin-top: 12px; width: 100%;">حفظ الإعدادات</button>
+        <button class="btn-primary" onclick="saveSettings()" style="width: 100%; margin-top: 8px;">حفظ الإعدادات</button>
     </div>
 
-    <div class="search-box">
-        <input type="text" id="orderInput" placeholder="#38194" onkeypress="if(event.key==='Enter') fetchOrder()">
+    <div class="search-container">
+        <input type="text" id="orderInput" placeholder="ادخل رقم الطلب، مثلاً: #38194" onkeypress="if(event.key==='Enter') fetchOrder()">
         <button onclick="fetchOrder()">بحث</button>
     </div>
 
-    <div id="resultArea"></div>
+    <div id="resultArea">
+        <!-- Empty state placeholder -->
+        <div style="text-align: center; padding: 48px 20px; color: var(--text-muted);">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px; opacity: 0.5;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <p style="font-size: 14px; font-weight: 600;">يرجى البحث برقم الأوردر لعرض التفاصيل</p>
+        </div>
+    </div>
 </div>
 
 <div id="toast-container"></div>
 
+<!-- Confirm Modal HTML -->
 <div id="confirmOverlay" class="modal-overlay">
     <div class="modal-card">
         <div id="confirmHeader" class="modal-header"></div>
@@ -220,12 +291,17 @@
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
-        toast.textContent = msg;
+        
+        let icon = '';
+        if(type === 'success') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>';
+        else if(type === 'error') icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
+        else icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
+
+        toast.innerHTML = `${icon} <span>${msg}</span>`;
         container.appendChild(toast);
         setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
     }
 
-    // Modal Pattern من الـ Dev-Guide
     function openConfirm(headerHTML, bodyHTML, okLabel, okClass, onConfirm) {
         document.getElementById('confirmHeader').innerHTML = headerHTML;
         document.getElementById('confirmBody').innerHTML = bodyHTML;
@@ -251,13 +327,13 @@
         const minutes = pad(d.getMinutes());
         const ampm = hours >= 12 ? 'مساءً' : 'صباحاً';
         hours = hours % 12 || 12;
-        return `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()} الساعة ${pad(hours)}:${minutes} ${ampm}`;
+        return `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()} <span style="color:var(--text-muted); margin:0 4px">•</span> ${pad(hours)}:${minutes} ${ampm}`;
     }
 
     async function fetchOrder() {
         const orderInput = document.getElementById('orderInput');
         const resultArea = document.getElementById('resultArea');
-        const orderNumber = orderInput.value.trim();
+        let orderNumber = orderInput.value.trim();
         
         const url = localStorage.getItem(LS_URL_KEY);
         const secret = localStorage.getItem(LS_SEC_KEY);
@@ -268,8 +344,16 @@
         }
 
         if (!orderNumber) return;
+        // Ensure '#' prefix if missing
+        if (!orderNumber.startsWith('#')) orderNumber = '#' + orderNumber;
 
-        resultArea.innerHTML = '<p style="text-align:center; font-size:13px; color:var(--text-secondary);">جاري البحث...</p>';
+        resultArea.innerHTML = `
+            <div style="text-align: center; padding: 48px 20px;">
+                <div style="display:inline-block; width: 24px; height: 24px; border: 3px solid var(--border-strong); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 12px;"></div>
+                <p style="font-size: 13px; color: var(--text-secondary); font-weight: 600;">جاري جلب بيانات الطلب...</p>
+                <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+            </div>
+        `;
 
         try {
             const res = await fetch(`${url}?orderNumber=${encodeURIComponent(orderNumber)}`, {
@@ -281,79 +365,82 @@
 
             renderOrder(response.data);
         } catch (err) {
-            resultArea.innerHTML = `<div class="card error">${err.message}</div>`;
+            resultArea.innerHTML = `
+                <div class="card" style="border-color: var(--red); background: var(--amber-light);">
+                    <div style="display:flex; align-items:center; gap:8px; color: var(--red); font-weight:700;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                        خطأ في البحث
+                    </div>
+                    <p style="margin-top: 8px; font-size: 14px; color: var(--text-primary);">${err.message}</p>
+                </div>
+            `;
         }
     }
 
-    // الدالة الجديدة لتغيير الحالة لـ Print
     function triggerUpdateStatusToPrint(orderId, orderName, currentStatus) {
         const bodyHTML = `
             هل أنت متأكد من تغيير حالة الطلب <span class="mono" style="font-weight:700">${orderName}</span>؟
-            <br><br>
-            الحالة الحالية: <strong>${currentStatus || 'فارغ'}</strong><br>
-            الحالة الجديدة: <strong style="color:var(--accent)">Print</strong>
+            <div style="margin-top: 16px; background: var(--surface-2); padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--border);">
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <span style="color:var(--text-secondary); font-size:12px;">الحالة الحالية:</span>
+                    <strong>${currentStatus || 'فارغ'}</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="color:var(--text-secondary); font-size:12px;">الحالة الجديدة:</span>
+                    <strong style="color:var(--accent)">Print</strong>
+                </div>
+            </div>
         `;
 
-        openConfirm('تأكيد تغيير الحالة', bodyHTML, 'نعم، تغيير', 'primary', async () => {
+        openConfirm('تأكيد تغيير الحالة', bodyHTML, 'نعم، قم بالتغيير', 'primary', async () => {
             const url = localStorage.getItem(LS_URL_KEY);
             const secret = localStorage.getItem(LS_SEC_KEY);
 
             try {
                 const res = await fetch(url, {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'X-Worker-Secret': secret 
-                    },
-                    body: JSON.stringify({
-                        action: 'SET_STATUS_PRINT',
-                        orderId: orderId
-                    })
+                    headers: { 'Content-Type': 'application/json', 'X-Worker-Secret': secret },
+                    body: JSON.stringify({ action: 'SET_STATUS_PRINT', orderId: orderId })
                 });
 
                 const data = await res.json();
                 if (data.ok) {
-                    showToast('تم تحديث حالة الأوردر بنجاح لـ Print', 'success');
+                    showToast('تم تحديث حالة الأوردر لـ Print', 'success');
                     // Optimistic Update للجدول
                     const statusCell = document.getElementById('mf-status-value');
                     if (statusCell) {
                         statusCell.innerHTML = 'Print';
                         statusCell.style.color = 'var(--accent)';
-                        statusCell.style.fontWeight = '700';
                     }
-                } else {
-                    throw new Error(data.error || 'حدث خطأ أثناء التحديث');
-                }
-            } catch (err) {
-                showToast(err.message, 'error');
-            }
+                } else { throw new Error(data.error || 'حدث خطأ أثناء التحديث'); }
+            } catch (err) { showToast(err.message, 'error'); }
         });
     }
 
     async function addTestTag(orderId, btnElement) {
         const flowToken = localStorage.getItem(LS_FLOW_KEY);
-        if (!flowToken) {
-            showToast('يرجى إضافة Flow Token في الإعدادات', 'error');
-            toggleSettings(); return;
-        }
+        if (!flowToken) { showToast('يرجى إضافة Flow Token في الإعدادات', 'error'); toggleSettings(); return; }
 
         const originalText = btnElement.textContent;
-        btnElement.textContent = 'جاري الإضافة...';
+        btnElement.innerHTML = '<span style="display:inline-block; width:12px; height:12px; border:2px solid var(--text-secondary); border-top-color:transparent; border-radius:50%; animation:spin 1s linear infinite; vertical-align:middle; margin-left:6px;"></span> جاري الإضافة';
         btnElement.disabled = true;
 
         try {
             const res = await fetch('https://flow-companion.mivicle.app/rest/1/flow/start/order', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ bearerToken: flowToken, itemId: orderId, specifier: 'ADD_TEST_VIEW_TAG' })
             });
 
             if (res.status === 200) {
-                showToast('تم تشغيل مسار الإضافة بنجاح', 'success');
+                showToast('تم تشغيل مسار إضافة التاج', 'success');
+                // Optimistic UI Update
                 const tagsContainer = document.getElementById('tagsContainer');
                 if (tagsContainer && !tagsContainer.innerHTML.includes('Test-View')) {
                     const newTag = document.createElement('span');
-                    newTag.style.cssText = 'font-size:11px; background:var(--accent-light); color:var(--accent-dark); border:1px solid var(--accent); padding:2px 6px; border-radius:4px; font-weight:600;';
+                    newTag.className = 'tag-badge';
+                    newTag.style.background = 'var(--accent-light)';
+                    newTag.style.color = 'var(--accent-hover)';
+                    newTag.style.borderColor = 'var(--accent)';
                     newTag.textContent = 'Test-View';
                     tagsContainer.appendChild(newTag);
                 }
@@ -361,12 +448,8 @@
                 const errData = await res.json().catch(() => ({}));
                 showToast(errData.message || 'حدث خطأ غير متوقع', 'error');
             }
-        } catch (e) {
-            showToast('خطأ في الاتصال بالسيرفر', 'error');
-        } finally {
-            btnElement.textContent = originalText;
-            btnElement.disabled = false;
-        }
+        } catch (e) { showToast('خطأ في الاتصال بالسيرفر', 'error'); } 
+        finally { btnElement.textContent = originalText; btnElement.disabled = false; }
     }
 
     function renderOrder(order) {
@@ -374,13 +457,15 @@
 
         const itemsHtml = order.lineItems.nodes.map(item => `
             <tr>
-                <td>${item.title}</td>
-                <td class="mono">${item.sku || '-'}</td>
-                <td style="text-align:center">${item.quantity.toLocaleString('en-US')}</td>
+                <td style="font-weight: 500;">${item.title}</td>
+                <td class="mono" style="color: var(--text-secondary);">${item.sku || '-'}</td>
+                <td style="text-align:center"><span style="background:var(--surface-2); padding:4px 12px; border-radius:12px; font-weight:700; border:1px solid var(--border);">${item.quantity.toLocaleString('en-US')}</span></td>
             </tr>
         `).join('');
 
-        const tagsHtml = order.tags.map(t => `<span style="font-size:11px; background:var(--surface-2); border:1px solid var(--border); padding:2px 6px; border-radius:4px;">${t}</span>`).join('');
+        const tagsHtml = order.tags.length > 0 
+            ? order.tags.map(t => `<span class="tag-badge">${t}</span>`).join('')
+            : '<span style="color:var(--text-muted); font-size: 12px;">لا يوجد تاجز</span>';
 
         const apiFields = {};
         if (order.metafields && order.metafields.nodes) {
@@ -388,108 +473,94 @@
         }
 
         let metafieldsHtml = '';
-        
         KNOWN_METAFIELDS.forEach(kf => {
             const fieldData = apiFields[kf.key];
-            const valueHTML = fieldData && fieldData.value ? fieldData.value : '<span style="color:var(--text-muted)">-</span>';
+            const valueHTML = fieldData && fieldData.value ? fieldData.value : '<span class="mf-empty">فارغ</span>';
             const cellId = kf.key === 'manual_status' ? 'id="mf-status-value"' : '';
+            const highlightStyle = kf.key === 'manual_status' && fieldData && fieldData.value ? 'color: var(--text-primary); font-weight: 700;' : '';
 
             metafieldsHtml += `
-                <tr>
-                    <td style="width: 40%;">
-                        <span class="metafield-label">${kf.label}</span>
-                        <span class="metafield-key">${kf.key}</span>
-                    </td>
-                    <td class="mono" style="word-break: break-all;" ${cellId}>
-                        ${valueHTML}
-                    </td>
-                </tr>
+                <div class="mf-item">
+                    <span class="mf-label">${kf.label} <span class="mf-key">(${kf.key})</span></span>
+                    <span class="mf-value mono" ${cellId} style="${highlightStyle}">${valueHTML}</span>
+                </div>
             `;
             if (fieldData) delete apiFields[kf.key];
         });
 
         Object.values(apiFields).forEach(mf => {
             metafieldsHtml += `
-                <tr>
-                    <td style="width: 40%;">
-                        <span class="metafield-label">${mf.key}</span>
-                        <span class="metafield-key">${mf.namespace}.${mf.key}</span>
-                    </td>
-                    <td class="mono" style="word-break: break-all;">${mf.value}</td>
-                </tr>
+                <div class="mf-item">
+                    <span class="mf-label">${mf.key} <span class="mf-key">(${mf.namespace})</span></span>
+                    <span class="mf-value mono">${mf.value}</span>
+                </div>
             `;
         });
 
-        // استخراج الحالة الحالية لتبمريرها للمودال
         const currentStatus = apiFields['manual_status']?.value || '';
 
         document.getElementById('resultArea').innerHTML = `
-            <div class="card">
-                <div class="order-header">
-                    <span class="order-name mono">${order.name}</span>
-                    <span class="status-pill">${order.displayFulfillmentStatus}</span>
-                </div>
-
-                <div class="info-grid">
-                    <div class="info-item">
-                        <label>العميل</label>
-                        <span>${order.customer ? order.customer.firstName + ' ' + order.customer.lastName : 'عميل غير مسجل'}</span>
-                    </div>
-                    <div class="info-item">
-                        <label>الموبايل</label>
-                        <span class="mono">${order.customer?.phone || '-'}</span>
-                    </div>
-                    <div class="info-item">
-                        <label>التاريخ</label>
-                        <span style="font-size:12px; direction:ltr; display:inline-block;" class="mono">${formattedDate}</span>
-                    </div>
-                    <div class="info-item">
-                        <label>المبلغ المطلوب (COD)</label>
-                        <span class="mono" style="font-weight:700; color:var(--accent)">
-                            ${parseFloat(order.totalOutstandingSet.shopMoney.amount).toLocaleString('en-US')} EGP
-                        </span>
-                    </div>
-                </div>
-
-                <label style="font-size:10px; font-weight:700; color:var(--text-secondary); margin-bottom:8px; display:block;">المنتجات</label>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>المنتج</th>
-                            <th>SKU</th>
-                            <th style="text-align:center">الكمية</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${itemsHtml}
-                    </tbody>
-                </table>
-
-                <label style="font-size:10px; font-weight:700; color:var(--text-secondary); margin-bottom:8px; margin-top:20px; display:block;">البيانات الإضافية (Metafields)</label>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>الحقل (Label)</th>
-                            <th>القيمة (Value)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${metafieldsHtml}
-                    </tbody>
-                </table>
-
-                <div style="margin-top:24px; display:flex; justify-content:space-between; align-items:flex-end;">
-                    <div>
-                        <label style="font-size:10px; font-weight:700; color:var(--text-secondary); margin-bottom:6px; display:block;">التاجز</label>
-                        <div id="tagsContainer" style="display:flex; gap:6px; flex-wrap:wrap;">
-                            ${tagsHtml}
-                        </div>
+            <div class="card" style="padding: 32px;">
+                <!-- 1. Header & Actions -->
+                <div class="order-header-module">
+                    <div class="order-title-group">
+                        <span class="order-name mono">${order.name}</span>
+                        <span class="status-pill">${order.displayFulfillmentStatus}</span>
                     </div>
                     
-                    <div style="display:flex; gap:8px; flex-direction:column; align-items:flex-end;">
-                        <button class="btn-primary-small" onclick="triggerUpdateStatusToPrint('${order.id}', '${order.name}', '${currentStatus}')">تغيير الحالة لـ Print</button>
+                    <div class="action-group">
+                        <button class="btn-primary" onclick="triggerUpdateStatusToPrint('${order.id}', '${order.name}', '${currentStatus}')">تغيير لـ Print</button>
                         <button class="btn-secondary" onclick="addTestTag('${order.id}', this)">+ إضافة Test-View</button>
                     </div>
+                </div>
+
+                <!-- 2. Mini Stats -->
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <span class="stat-label">العميل</span>
+                        <span class="stat-value">${order.customer ? order.customer.firstName + ' ' + order.customer.lastName : 'عميل غير مسجل'}</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">الموبايل</span>
+                        <span class="stat-value mono" style="direction:ltr; display:inline-block;">${order.customer?.phone || '-'}</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">تاريخ الطلب</span>
+                        <span class="stat-value mono" style="font-size: 12px;">${formattedDate}</span>
+                    </div>
+                    <div class="stat-box" style="background: var(--accent-light); border-color: var(--accent);">
+                        <span class="stat-label" style="color: var(--accent-hover);">المبلغ المطلوب (COD)</span>
+                        <span class="stat-value highlight mono">${parseFloat(order.totalOutstandingSet.shopMoney.amount).toLocaleString('en-US')} EGP</span>
+                    </div>
+                </div>
+
+                <!-- 3. Line Items -->
+                <h3 class="section-title">المنتجات (${order.lineItems.nodes.length})</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>المنتج</th>
+                                <th>SKU</th>
+                                <th style="text-align:center">الكمية</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemsHtml}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 4. Metafields (Grid instead of Table) -->
+                <h3 class="section-title">البيانات الإضافية (Metafields)</h3>
+                <div class="metafields-grid">
+                    ${metafieldsHtml}
+                </div>
+
+                <!-- 5. Tags -->
+                <h3 class="section-title">التاجز</h3>
+                <div id="tagsContainer" class="tags-container">
+                    ${tagsHtml}
                 </div>
             </div>
         `;
