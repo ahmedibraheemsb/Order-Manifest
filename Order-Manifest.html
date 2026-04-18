@@ -11,12 +11,16 @@
         :root {
             --bg: #f3f4f6;
             --surface: #fff;
+            --surface-2: #f9fafb;
             --border: #e5e7eb;
+            --border-strong: #d1d5db;
             --text-primary: #111827;
             --text-secondary: #6b7280;
             --accent: #2563eb;
+            --accent-light: #eff6ff;
+            --accent-dark: #1d4ed8;
             --radius: 12px;
-            --shadow: 0 1px 3px rgba(0,0,0,.07);
+            --shadow: 0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
             --green: #16a34a;
             --red: #dc2626;
         }
@@ -65,7 +69,18 @@
             font-weight: 600;
             cursor: pointer;
             font-size: 13px;
+            transition: opacity 0.2s;
         }
+        button:disabled { opacity: 0.7; cursor: not-allowed; }
+
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border-strong);
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        .btn-secondary:hover:not(:disabled) { background: var(--surface-2); }
 
         .order-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 16px; }
         .order-name { font-size: 18px; font-weight: 800; }
@@ -76,13 +91,36 @@
         .info-item span { font-size: 14px; font-weight: 500; }
 
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th { text-align: right; padding: 8px; background: #e5e7eb; font-weight: 700; border-bottom: 2px solid var(--border); }
+        th { text-align: right; padding: 8px; background: var(--border); font-weight: 700; border-bottom: 2px solid var(--border-strong); }
         td { padding: 10px 8px; border-bottom: 1px solid var(--border); }
 
         .settings-btn { background: none; color: var(--text-secondary); border: 1px solid var(--border); padding: 5px 10px; }
         #settingsPanel { display: none; margin-top: 10px; }
         
         .error { color: var(--red); font-size: 12px; margin-top: 8px; }
+
+        /* Toast UI */
+        #toast-container {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1000;
+        }
+        .toast {
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: white;
+            box-shadow: var(--shadow);
+            transition: opacity 0.3s ease;
+        }
+        .toast.success { background: var(--green); }
+        .toast.error { background: var(--red); }
+        .toast.neutral { background: var(--text-primary); }
     </style>
 </head>
 <body>
@@ -98,11 +136,15 @@
             <label>Worker URL</label>
             <input type="text" id="workerUrl" placeholder="https://your-worker.workers.dev">
         </div>
-        <div class="info-item">
+        <div class="info-item" style="margin-bottom: 10px;">
             <label>Worker Secret</label>
             <input type="password" id="workerSecret" placeholder="••••••••">
         </div>
-        <button onclick="saveSettings()" style="margin-top: 10px; width: 100%;">حفظ الإعدادات</button>
+        <div class="info-item">
+            <label>Flow Token (Flow Companion)</label>
+            <input type="password" id="flowToken" placeholder="••••••••">
+        </div>
+        <button onclick="saveSettings()" style="margin-top: 12px; width: 100%;">حفظ الإعدادات</button>
     </div>
 
     <div class="search-box">
@@ -113,13 +155,17 @@
     <div id="resultArea"></div>
 </div>
 
+<div id="toast-container"></div>
+
 <script>
     const LS_URL_KEY = 'orderviewer_worker_url';
     const LS_SEC_KEY = 'orderviewer_worker_secret';
+    const LS_FLOW_KEY = 'orderviewer_flow_token';
 
     // Load settings on init
     document.getElementById('workerUrl').value = localStorage.getItem(LS_URL_KEY) || '';
     document.getElementById('workerSecret').value = localStorage.getItem(LS_SEC_KEY) || '';
+    document.getElementById('flowToken').value = localStorage.getItem(LS_FLOW_KEY) || '';
 
     function toggleSettings() {
         const panel = document.getElementById('settingsPanel');
@@ -129,7 +175,32 @@
     function saveSettings() {
         localStorage.setItem(LS_URL_KEY, document.getElementById('workerUrl').value);
         localStorage.setItem(LS_SEC_KEY, document.getElementById('workerSecret').value);
+        localStorage.setItem(LS_FLOW_KEY, document.getElementById('flowToken').value);
         toggleSettings();
+        showToast('تم حفظ الإعدادات', 'success');
+    }
+
+    function showToast(msg, type = 'neutral') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = msg;
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    function formatDateTime(isoString) {
+        const d = new Date(isoString);
+        const pad = n => String(n).padStart(2, '0');
+        let hours = d.getHours();
+        const minutes = pad(d.getMinutes());
+        const ampm = hours >= 12 ? 'مساءً' : 'صباحاً';
+        hours = hours % 12 || 12;
+        return `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()} الساعة ${pad(hours)}:${minutes} ${ampm}`;
     }
 
     async function fetchOrder() {
@@ -141,13 +212,14 @@
         const secret = localStorage.getItem(LS_SEC_KEY);
 
         if (!url || !secret) {
-            alert('يرجى ضبط الإعدادات أولاً');
+            showToast('يرجى ضبط إعدادات الـ Worker أولاً', 'error');
+            toggleSettings();
             return;
         }
 
         if (!orderNumber) return;
 
-        resultArea.innerHTML = '<p style="text-align:center; font-size:13px;">جاري البحث...</p>';
+        resultArea.innerHTML = '<p style="text-align:center; font-size:13px; color:var(--text-secondary);">جاري البحث...</p>';
 
         try {
             const res = await fetch(`${url}?orderNumber=${encodeURIComponent(orderNumber)}`, {
@@ -163,9 +235,54 @@
         }
     }
 
+    async function addTestTag(orderId, btnElement) {
+        const flowToken = localStorage.getItem(LS_FLOW_KEY);
+        if (!flowToken) {
+            showToast('يرجى إضافة Flow Token في الإعدادات', 'error');
+            toggleSettings();
+            return;
+        }
+
+        const originalText = btnElement.textContent;
+        btnElement.textContent = 'جاري الإضافة...';
+        btnElement.disabled = true;
+
+        try {
+            const res = await fetch('https://flow-companion.mivicle.app/rest/1/flow/start/order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    bearerToken: flowToken,
+                    itemId: orderId,
+                    specifier: 'ADD_TEST_VIEW_TAG'
+                })
+            });
+
+            if (res.status === 200) {
+                showToast('تم تشغيل مسار الإضافة بنجاح', 'success');
+                
+                // Optimistic UI Update
+                const tagsContainer = document.getElementById('tagsContainer');
+                if (tagsContainer && !tagsContainer.innerHTML.includes('Test-View')) {
+                    const newTag = document.createElement('span');
+                    newTag.style.cssText = 'font-size:11px; background:var(--accent-light); color:var(--accent-dark); border:1px solid var(--accent); padding:2px 6px; border-radius:4px; font-weight:600;';
+                    newTag.textContent = 'Test-View';
+                    tagsContainer.appendChild(newTag);
+                }
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                showToast(errData.message || 'حدث خطأ غير متوقع', 'error');
+            }
+        } catch (e) {
+            showToast('خطأ في الاتصال بالسيرفر', 'error');
+        } finally {
+            btnElement.textContent = originalText;
+            btnElement.disabled = false;
+        }
+    }
+
     function renderOrder(order) {
-        const date = new Date(order.createdAt);
-        const formattedDate = date.toLocaleDateString('en-US') + ' ' + date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const formattedDate = formatDateTime(order.createdAt);
 
         const itemsHtml = order.lineItems.nodes.map(item => `
             <tr>
@@ -174,6 +291,8 @@
                 <td style="text-align:center">${item.quantity.toLocaleString('en-US')}</td>
             </tr>
         `).join('');
+
+        const tagsHtml = order.tags.map(t => `<span style="font-size:11px; background:var(--surface-2); border:1px solid var(--border); padding:2px 6px; border-radius:4px;">${t}</span>`).join('');
 
         document.getElementById('resultArea').innerHTML = `
             <div class="card">
@@ -193,7 +312,7 @@
                     </div>
                     <div class="info-item">
                         <label>التاريخ</label>
-                        <span style="font-size:12px">${formattedDate}</span>
+                        <span style="font-size:12px; direction:ltr; display:inline-block;" class="mono">${formattedDate}</span>
                     </div>
                     <div class="info-item">
                         <label>المبلغ المطلوب (COD)</label>
@@ -217,11 +336,14 @@
                     </tbody>
                 </table>
 
-                <div style="margin-top:16px;">
-                    <label style="font-size:10px; font-weight:700; color:var(--text-secondary); margin-bottom:4px; display:block;">التاجز</label>
-                    <div style="display:flex; gap:4px; flex-wrap:wrap;">
-                        ${order.tags.map(t => `<span style="font-size:11px; background:#f9fafb; border:1px solid var(--border); padding:2px 6px; border-radius:4px;">${t}</span>`).join('')}
+                <div style="margin-top:20px; display:flex; justify-content:space-between; align-items:flex-end;">
+                    <div>
+                        <label style="font-size:10px; font-weight:700; color:var(--text-secondary); margin-bottom:6px; display:block;">التاجز</label>
+                        <div id="tagsContainer" style="display:flex; gap:6px; flex-wrap:wrap;">
+                            ${tagsHtml}
+                        </div>
                     </div>
+                    <button class="btn-secondary" onclick="addTestTag('${order.id}', this)">+ إضافة Test-View</button>
                 </div>
             </div>
         `;
