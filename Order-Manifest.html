@@ -16,6 +16,7 @@
             --border-strong: #d1d5db;
             --text-primary: #111827;
             --text-secondary: #6b7280;
+            --text-muted: #6b7280;
             --accent: #2563eb;
             --accent-light: #eff6ff;
             --accent-dark: #1d4ed8;
@@ -90,9 +91,12 @@
         .info-item label { display: block; font-size: 10px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
         .info-item span { font-size: 14px; font-weight: 500; }
 
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th { text-align: right; padding: 8px; background: var(--border); font-weight: 700; border-bottom: 2px solid var(--border-strong); }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px; }
+        th { text-align: right; padding: 8px; background: var(--surface-2); font-weight: 700; border-bottom: 2px solid var(--border-strong); }
         td { padding: 10px 8px; border-bottom: 1px solid var(--border); }
+        
+        .metafield-key { font-weight: 600; color: var(--text-primary); }
+        .metafield-ns { font-size: 10px; color: var(--text-muted); display: block; margin-top: 2px; }
 
         .settings-btn { background: none; color: var(--text-secondary); border: 1px solid var(--border); padding: 5px 10px; }
         #settingsPanel { display: none; margin-top: 10px; }
@@ -294,6 +298,18 @@
 
         const tagsHtml = order.tags.map(t => `<span style="font-size:11px; background:var(--surface-2); border:1px solid var(--border); padding:2px 6px; border-radius:4px;">${t}</span>`).join('');
 
+        const metafieldsHtml = order.metafields && order.metafields.nodes.length > 0 
+            ? order.metafields.nodes.map(mf => `
+                <tr>
+                    <td>
+                        <span class="metafield-key">${mf.key}</span>
+                        <span class="metafield-ns">Namespace: ${mf.namespace}</span>
+                    </td>
+                    <td class="mono" style="word-break: break-all;">${mf.value || '-'}</td>
+                </tr>
+            `).join('')
+            : '<tr><td colspan="2" style="text-align:center; color:var(--text-muted); padding: 16px;">لا توجد Metafields لهذا الأوردر</td></tr>';
+
         document.getElementById('resultArea').innerHTML = `
             <div class="card">
                 <div class="order-header">
@@ -336,7 +352,20 @@
                     </tbody>
                 </table>
 
-                <div style="margin-top:20px; display:flex; justify-content:space-between; align-items:flex-end;">
+                <label style="font-size:10px; font-weight:700; color:var(--text-secondary); margin-bottom:8px; margin-top:20px; display:block;">البيانات الإضافية (Metafields)</label>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 40%;">الحقل (Key)</th>
+                            <th>القيمة (Value)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${metafieldsHtml}
+                    </tbody>
+                </table>
+
+                <div style="margin-top:24px; display:flex; justify-content:space-between; align-items:flex-end;">
                     <div>
                         <label style="font-size:10px; font-weight:700; color:var(--text-secondary); margin-bottom:6px; display:block;">التاجز</label>
                         <div id="tagsContainer" style="display:flex; gap:6px; flex-wrap:wrap;">
