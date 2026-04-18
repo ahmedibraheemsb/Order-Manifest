@@ -21,6 +21,7 @@
             --accent-light: #eff6ff;
             --accent-dark: #1d4ed8;
             --radius: 12px;
+            --radius-sm: 8px;
             --shadow: 0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
             --green: #16a34a;
             --red: #dc2626;
@@ -56,7 +57,7 @@
             flex: 1;
             padding: 10px 14px;
             border: 1px solid var(--border);
-            border-radius: 8px;
+            border-radius: var(--radius-sm);
             font-size: 14px;
             font-family: 'IBM Plex Mono', monospace;
             direction: ltr;
@@ -66,7 +67,7 @@
             color: white;
             border: none;
             padding: 10px 20px;
-            border-radius: 8px;
+            border-radius: var(--radius-sm);
             font-weight: 600;
             cursor: pointer;
             font-size: 13px;
@@ -82,6 +83,16 @@
             font-size: 12px;
         }
         .btn-secondary:hover:not(:disabled) { background: var(--surface-2); }
+
+        .btn-primary-small {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 600;
+        }
 
         .order-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 16px; }
         .order-name { font-size: 18px; font-weight: 800; }
@@ -104,27 +115,22 @@
         .error { color: var(--red); font-size: 12px; margin-top: 8px; }
 
         /* Toast UI */
-        #toast-container {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            z-index: 1000;
-        }
-        .toast {
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
-            color: white;
-            box-shadow: var(--shadow);
-            transition: opacity 0.3s ease;
-        }
+        #toast-container { position: fixed; bottom: 20px; left: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 1000; }
+        .toast { padding: 12px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; color: white; box-shadow: var(--shadow); transition: opacity 0.3s ease; }
         .toast.success { background: var(--green); }
         .toast.error { background: var(--red); }
         .toast.neutral { background: var(--text-primary); }
+
+        /* Confirm Modal UI */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
+        .modal-overlay.open { display: flex; }
+        .modal-card { background: var(--surface); border-radius: var(--radius); width: 90%; max-width: 400px; padding: 24px; box-shadow: var(--shadow); }
+        .modal-header { font-size: 16px; font-weight: 700; margin-bottom: 12px; color: var(--text-primary); }
+        .modal-body { font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; line-height: 1.6; }
+        .modal-footer { display: flex; gap: 8px; justify-content: flex-end; }
+        .btn-cancel { background: var(--surface-2); border: 1px solid var(--border-strong); color: var(--text-primary); padding: 8px 16px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; font-weight: 600; }
+        .btn-confirm-ok { padding: 8px 16px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; font-weight: 600; color: white; border: none; }
+        .btn-confirm-ok.primary { background: var(--accent); }
     </style>
 </head>
 <body>
@@ -161,12 +167,22 @@
 
 <div id="toast-container"></div>
 
+<div id="confirmOverlay" class="modal-overlay">
+    <div class="modal-card">
+        <div id="confirmHeader" class="modal-header"></div>
+        <div id="confirmBody" class="modal-body"></div>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="document.getElementById('confirmOverlay').classList.remove('open')">إلغاء</button>
+            <button id="confirmOkBtn" class="btn-confirm-ok">تأكيد</button>
+        </div>
+    </div>
+</div>
+
 <script>
     const LS_URL_KEY = 'orderviewer_worker_url';
     const LS_SEC_KEY = 'orderviewer_worker_secret';
     const LS_FLOW_KEY = 'orderviewer_flow_token';
 
-    // القائمة المرجعية للميتافيلدز اللي عايزين نعرضها دايماً
     const KNOWN_METAFIELDS = [
         { key: 'manual_status', label: 'STATUS' },
         { key: 'payment', label: 'PAYMENT' },
@@ -183,7 +199,6 @@
         { key: 'extra_shipping_fees', label: 'Extra Shipping Fees' }
     ];
 
-    // Load settings on init
     document.getElementById('workerUrl').value = localStorage.getItem(LS_URL_KEY) || '';
     document.getElementById('workerSecret').value = localStorage.getItem(LS_SEC_KEY) || '';
     document.getElementById('flowToken').value = localStorage.getItem(LS_FLOW_KEY) || '';
@@ -207,11 +222,26 @@
         toast.className = `toast ${type}`;
         toast.textContent = msg;
         container.appendChild(toast);
+        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+    }
+
+    // Modal Pattern من الـ Dev-Guide
+    function openConfirm(headerHTML, bodyHTML, okLabel, okClass, onConfirm) {
+        document.getElementById('confirmHeader').innerHTML = headerHTML;
+        document.getElementById('confirmBody').innerHTML = bodyHTML;
+
+        const okBtn = document.getElementById('confirmOkBtn');
+        const newOk = okBtn.cloneNode(true);
+        okBtn.parentNode.replaceChild(newOk, okBtn);
+
+        newOk.textContent = okLabel;
+        newOk.className = 'btn-confirm-ok ' + okClass;
+        newOk.addEventListener('click', () => {
+            document.getElementById('confirmOverlay').classList.remove('open');
+            onConfirm();
+        });
         
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
+        document.getElementById('confirmOverlay').classList.add('open');
     }
 
     function formatDateTime(isoString) {
@@ -234,8 +264,7 @@
 
         if (!url || !secret) {
             showToast('يرجى ضبط إعدادات الـ Worker أولاً', 'error');
-            toggleSettings();
-            return;
+            toggleSettings(); return;
         }
 
         if (!orderNumber) return;
@@ -256,13 +285,56 @@
         }
     }
 
+    // الدالة الجديدة لتغيير الحالة لـ Print
+    function triggerUpdateStatusToPrint(orderId, orderName, currentStatus) {
+        const bodyHTML = `
+            هل أنت متأكد من تغيير حالة الطلب <span class="mono" style="font-weight:700">${orderName}</span>؟
+            <br><br>
+            الحالة الحالية: <strong>${currentStatus || 'فارغ'}</strong><br>
+            الحالة الجديدة: <strong style="color:var(--accent)">Print</strong>
+        `;
+
+        openConfirm('تأكيد تغيير الحالة', bodyHTML, 'نعم، تغيير', 'primary', async () => {
+            const url = localStorage.getItem(LS_URL_KEY);
+            const secret = localStorage.getItem(LS_SEC_KEY);
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-Worker-Secret': secret 
+                    },
+                    body: JSON.stringify({
+                        action: 'SET_STATUS_PRINT',
+                        orderId: orderId
+                    })
+                });
+
+                const data = await res.json();
+                if (data.ok) {
+                    showToast('تم تحديث حالة الأوردر بنجاح لـ Print', 'success');
+                    // Optimistic Update للجدول
+                    const statusCell = document.getElementById('mf-status-value');
+                    if (statusCell) {
+                        statusCell.innerHTML = 'Print';
+                        statusCell.style.color = 'var(--accent)';
+                        statusCell.style.fontWeight = '700';
+                    }
+                } else {
+                    throw new Error(data.error || 'حدث خطأ أثناء التحديث');
+                }
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        });
+    }
+
     async function addTestTag(orderId, btnElement) {
-        // [نفس الكود الخاص بـ Flow Companion بدون تعديل]
         const flowToken = localStorage.getItem(LS_FLOW_KEY);
         if (!flowToken) {
             showToast('يرجى إضافة Flow Token في الإعدادات', 'error');
-            toggleSettings();
-            return;
+            toggleSettings(); return;
         }
 
         const originalText = btnElement.textContent;
@@ -273,11 +345,7 @@
             const res = await fetch('https://flow-companion.mivicle.app/rest/1/flow/start/order', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    bearerToken: flowToken,
-                    itemId: orderId,
-                    specifier: 'ADD_TEST_VIEW_TAG'
-                })
+                body: JSON.stringify({ bearerToken: flowToken, itemId: orderId, specifier: 'ADD_TEST_VIEW_TAG' })
             });
 
             if (res.status === 200) {
@@ -314,35 +382,32 @@
 
         const tagsHtml = order.tags.map(t => `<span style="font-size:11px; background:var(--surface-2); border:1px solid var(--border); padding:2px 6px; border-radius:4px;">${t}</span>`).join('');
 
-        // معالجة الميتافيلدز لمطابقة شكل الأدمن
         const apiFields = {};
         if (order.metafields && order.metafields.nodes) {
-            order.metafields.nodes.forEach(mf => {
-                apiFields[mf.key] = mf;
-            });
+            order.metafields.nodes.forEach(mf => { apiFields[mf.key] = mf; });
         }
 
         let metafieldsHtml = '';
         
-        // 1. عرض الحقول المعروفة (سواء مليانة أو فاضية)
         KNOWN_METAFIELDS.forEach(kf => {
             const fieldData = apiFields[kf.key];
+            const valueHTML = fieldData && fieldData.value ? fieldData.value : '<span style="color:var(--text-muted)">-</span>';
+            const cellId = kf.key === 'manual_status' ? 'id="mf-status-value"' : '';
+
             metafieldsHtml += `
                 <tr>
                     <td style="width: 40%;">
                         <span class="metafield-label">${kf.label}</span>
                         <span class="metafield-key">${kf.key}</span>
                     </td>
-                    <td class="mono" style="word-break: break-all;">
-                        ${fieldData && fieldData.value ? fieldData.value : '<span style="color:var(--text-muted)">-</span>'}
+                    <td class="mono" style="word-break: break-all;" ${cellId}>
+                        ${valueHTML}
                     </td>
                 </tr>
             `;
-            // مسح الحقل من الأوبجيكت بعد عرضه عشان منكرروش
             if (fieldData) delete apiFields[kf.key];
         });
 
-        // 2. عرض أي حقول إضافية رجعت من الـ API ومش موجودة في اللستة بتاعتنا
         Object.values(apiFields).forEach(mf => {
             metafieldsHtml += `
                 <tr>
@@ -354,6 +419,9 @@
                 </tr>
             `;
         });
+
+        // استخراج الحالة الحالية لتبمريرها للمودال
+        const currentStatus = apiFields['manual_status']?.value || '';
 
         document.getElementById('resultArea').innerHTML = `
             <div class="card">
@@ -417,7 +485,11 @@
                             ${tagsHtml}
                         </div>
                     </div>
-                    <button class="btn-secondary" onclick="addTestTag('${order.id}', this)">+ إضافة Test-View</button>
+                    
+                    <div style="display:flex; gap:8px; flex-direction:column; align-items:flex-end;">
+                        <button class="btn-primary-small" onclick="triggerUpdateStatusToPrint('${order.id}', '${order.name}', '${currentStatus}')">تغيير الحالة لـ Print</button>
+                        <button class="btn-secondary" onclick="addTestTag('${order.id}', this)">+ إضافة Test-View</button>
+                    </div>
                 </div>
             </div>
         `;
