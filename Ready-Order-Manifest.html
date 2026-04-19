@@ -67,6 +67,7 @@
     .btn:hover { background-color: var(--surface-2); }
     .btn-primary { background-color: var(--accent); color: white; border-color: var(--accent); }
     .btn-primary:hover { background-color: var(--accent-dark); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
     .card {
       background-color: var(--surface);
@@ -76,10 +77,11 @@
       overflow: hidden;
     }
 
-    /* Table Styles */
     .table-container {
       width: 100%;
       overflow-x: auto;
+      max-height: 75vh;
+      display: none; /* مخفي في البداية */
     }
 
     table {
@@ -104,11 +106,8 @@
       z-index: 10;
     }
 
-    tr:hover {
-      background-color: var(--surface-2);
-    }
+    tr:hover { background-color: var(--surface-2); }
 
-    /* Utility Classes */
     .mono { font-family: var(--font-mono); direction: ltr; display: inline-block; }
     .tag-pill {
       background-color: var(--surface-2);
@@ -143,57 +142,36 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 40px;
+      padding: 60px 40px;
       text-align: center;
     }
     .state-box .icon { font-size: 40px; margin-bottom: 16px; opacity: 0.5; }
-    .state-box p { font-size: 14px; color: var(--text-muted); }
+    .state-box p { font-size: 14px; color: var(--text-muted); font-weight: 500; }
+    .state-box .progress { font-size: 12px; color: var(--accent); margin-top: 8px; font-weight: 600; }
 
-    /* Modals */
+    /* Modals & Toasts */
     .modal-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s;
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+      z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.2s;
     }
     .modal-overlay.open { opacity: 1; pointer-events: auto; }
-    
     .modal {
-      background: var(--surface);
-      border-radius: var(--radius);
-      width: 400px;
-      max-width: 90vw;
-      padding: 24px;
-      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+      background: var(--surface); border-radius: var(--radius); width: 400px; max-width: 90vw;
+      padding: 24px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
     }
-
     .modal-title { font-size: 17px; font-weight: 700; margin-bottom: 16px; }
-    
     .input-group { margin-bottom: 16px; }
     .input-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; }
     .input-group input {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid var(--border-strong);
-      border-radius: var(--radius-sm);
-      font-family: var(--font-mono);
-      font-size: 13px;
+      width: 100%; padding: 10px; border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 13px;
     }
     .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; }
 
-    /* Toast */
     #toast {
-      position: fixed; bottom: 24px; right: 24px;
-      padding: 12px 24px; border-radius: var(--radius-sm);
-      color: white; font-size: 14px; font-weight: 600;
-      transform: translateY(100px); transition: transform 0.3s;
-      z-index: 200;
+      position: fixed; bottom: 24px; right: 24px; padding: 12px 24px; border-radius: var(--radius-sm);
+      color: white; font-size: 14px; font-weight: 600; transform: translateY(100px); transition: transform 0.3s; z-index: 200;
     }
     #toast.show { transform: translateY(0); }
     #toast.success { background-color: var(--green); }
@@ -203,15 +181,21 @@
 <body>
 
   <div class="header-bar">
-    <h1>أوردرات Ready</h1>
+    <h1>أوردرات Ready (<span id="totalCount">0</span>)</h1>
     <div>
-      <button class="btn" onclick="fetchOrders()">تحديث البيانات</button>
+      <button class="btn" id="refreshBtn" onclick="startFetching()">تحديث البيانات</button>
       <button class="btn" onclick="openSettings()">الإعدادات</button>
     </div>
   </div>
 
   <div class="card">
-    <div class="table-container">
+    <div id="emptyState" class="state-box">
+      <div class="icon" id="stateIcon">⌛</div>
+      <p id="stateText">جاري تهيئة الأداة...</p>
+      <div class="progress" id="stateProgress"></div>
+    </div>
+    
+    <div class="table-container" id="tableContainer">
       <table>
         <thead>
           <tr>
@@ -231,13 +215,9 @@
           </tr>
         </thead>
         <tbody id="tableBody">
-          <!-- Rows will be injected here -->
+          <!-- Rows -->
         </tbody>
       </table>
-    </div>
-    <div id="emptyState" class="state-box">
-      <div class="icon">⌛</div>
-      <p>جاري تحميل البيانات...</p>
     </div>
   </div>
 
@@ -265,12 +245,11 @@
   <script>
     const LS_URL_KEY = 'ready_orders_worker_url';
     const LS_SEC_KEY = 'ready_orders_worker_secret';
+    let isFetching = false;
+    let currentTotalReady = 0;
 
     function getConfig() {
-      return {
-        url: localStorage.getItem(LS_URL_KEY) || '',
-        secret: localStorage.getItem(LS_SEC_KEY) || ''
-      };
+      return { url: localStorage.getItem(LS_URL_KEY) || '', secret: localStorage.getItem(LS_SEC_KEY) || '' };
     }
 
     function isConfigured() {
@@ -285,7 +264,6 @@
       setTimeout(() => { toast.classList.remove('show'); }, 3000);
     }
 
-    // Modal Logic
     function openSettings() {
       const config = getConfig();
       document.getElementById('workerUrlInput').value = config.url;
@@ -293,21 +271,16 @@
       document.getElementById('settingsOverlay').classList.add('open');
     }
 
-    function closeSettings() {
-      document.getElementById('settingsOverlay').classList.remove('open');
-    }
+    function closeSettings() { document.getElementById('settingsOverlay').classList.remove('open'); }
 
     function saveSettings() {
-      const url = document.getElementById('workerUrlInput').value.trim();
-      const secret = document.getElementById('workerSecretInput').value.trim();
-      localStorage.setItem(LS_URL_KEY, url);
-      localStorage.setItem(LS_SEC_KEY, secret);
+      localStorage.setItem(LS_URL_KEY, document.getElementById('workerUrlInput').value.trim());
+      localStorage.setItem(LS_SEC_KEY, document.getElementById('workerSecretInput').value.trim());
       closeSettings();
       showToast('تم حفظ الإعدادات');
-      fetchOrders();
+      startFetching();
     }
 
-    // Formatting Logic (from EcomModa Guide)
     function formatDate(isoString) {
       if (!isoString) return '-';
       const d = new Date(isoString);
@@ -326,60 +299,107 @@
       return `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()} الساعة ${pad(hours)}:${minutes} ${ampm}`;
     }
 
-    function formatNumber(num) {
-      return Number(num).toLocaleString('en-US');
-    }
+    function formatNumber(num) { return Number(num).toLocaleString('en-US'); }
 
-    // API Call & Render
-    async function fetchOrders() {
-      if (!isConfigured()) {
-        openSettings();
-        return;
-      }
+    // هنا بيحصل الـ Pagination
+    async function startFetching() {
+      if (!isConfigured()) { openSettings(); return; }
+      if (isFetching) return;
 
-      const tbody = document.getElementById('tableBody');
-      const emptyState = document.getElementById('emptyState');
+      isFetching = true;
+      document.getElementById('refreshBtn').disabled = true;
       
+      const tbody = document.getElementById('tableBody');
+      const tableContainer = document.getElementById('tableContainer');
+      const emptyState = document.getElementById('emptyState');
+      const progressText = document.getElementById('stateProgress');
+      
+      // Reset UI
       tbody.innerHTML = '';
+      tableContainer.style.display = 'none';
       emptyState.style.display = 'flex';
-      emptyState.innerHTML = '<div class="icon">⏳</div><p>جاري جلب الأوردرات...</p>';
+      document.getElementById('stateIcon').textContent = '🔄';
+      document.getElementById('stateText').textContent = 'جاري الاتصال بـ Shopify...';
+      progressText.textContent = '';
+      currentTotalReady = 0;
+      document.getElementById('totalCount').textContent = '0';
 
       const config = getConfig();
+      let hasNextPage = true;
+      let cursor = null;
+      let pagesScanned = 0;
 
       try {
-        const res = await fetch(config.url, {
-          method: 'GET',
-          headers: { 'X-Worker-Secret': config.secret }
-        });
+        while (hasNextPage) {
+          // تركيب الـ URL بالـ Cursor
+          const fetchUrl = new URL(config.url);
+          if (cursor) fetchUrl.searchParams.set('cursor', cursor);
 
-        const data = await res.json();
+          const res = await fetch(fetchUrl.toString(), {
+            method: 'GET',
+            headers: { 'X-Worker-Secret': config.secret }
+          });
 
-        if (!res.ok || !data.ok) throw new Error(data.error || 'خطأ في الاتصال بالخادم');
+          const data = await res.json();
+          if (!res.ok || !data.ok) throw new Error(data.error || 'خطأ في الاتصال');
 
-        renderTable(data.data);
+          // إضافة الأوردرات للجدول
+          if (data.data && data.data.length > 0) {
+            appendRows(data.data);
+            currentTotalReady += data.data.length;
+            document.getElementById('totalCount').textContent = currentTotalReady;
+            
+            // لو أول داتا تيجي نعرض الجدول فوراً ونخفي رسالة التحميل
+            if (tableContainer.style.display === 'none') {
+              emptyState.style.display = 'none';
+              tableContainer.style.display = 'block';
+            }
+          }
+
+          pagesScanned++;
+          
+          // لو لسه الجدول مخفي (يعني مفيش ready orders في أول صفحة)
+          if (tableContainer.style.display === 'none') {
+            progressText.textContent = `تم فحص ${pagesScanned * 50} أوردر...`;
+          }
+
+          hasNextPage = data.pageInfo.hasNextPage;
+          cursor = data.pageInfo.endCursor;
+        }
+
+        // خلصنا كل الصفحات
+        isFetching = false;
+        document.getElementById('refreshBtn').disabled = false;
         
+        if (currentTotalReady === 0) {
+          emptyState.style.display = 'flex';
+          tableContainer.style.display = 'none';
+          document.getElementById('stateIcon').textContent = '📦';
+          document.getElementById('stateText').textContent = 'لا توجد أوردرات جاهزة (Ready) منذ 1 إبريل';
+          progressText.textContent = '';
+        } else {
+          showToast('تم الانتهاء من جلب جميع الأوردرات');
+        }
+
       } catch (error) {
-        emptyState.innerHTML = `<div class="icon">❌</div><p style="color: var(--red)">${error.message}</p>`;
+        isFetching = false;
+        document.getElementById('refreshBtn').disabled = false;
+        emptyState.style.display = 'flex';
+        tableContainer.style.display = 'none';
+        document.getElementById('stateIcon').textContent = '❌';
+        document.getElementById('stateText').textContent = error.message;
+        document.getElementById('stateText').style.color = 'var(--red)';
+        progressText.textContent = '';
         showToast(error.message, 'error');
       }
     }
 
-    function renderTable(orders) {
+    function appendRows(orders) {
       const tbody = document.getElementById('tableBody');
-      const emptyState = document.getElementById('emptyState');
-
-      if (!orders || orders.length === 0) {
-        emptyState.style.display = 'flex';
-        emptyState.innerHTML = '<div class="icon">📦</div><p>لا توجد أوردرات جاهزة (Ready) منذ 1 إبريل</p>';
-        return;
-      }
-
-      emptyState.style.display = 'none';
-
       let html = '';
+      
       orders.forEach(order => {
         const tagsHtml = order.tags.map(t => `<span class="tag-pill">${t}</span>`).join('');
-        
         html += `
           <tr>
             <td><span class="mono">${order.name}</span></td>
@@ -399,15 +419,15 @@
         `;
       });
 
-      tbody.innerHTML = html;
+      tbody.insertAdjacentHTML('beforeend', html);
     }
 
-    // Auto-fetch on load if configured
     window.onload = () => {
       if (isConfigured()) {
-        fetchOrders();
+        startFetching();
       } else {
-        document.getElementById('emptyState').innerHTML = '<div class="icon">⚙️</div><p>يرجى إدخال إعدادات الـ Worker أولاً</p>';
+        document.getElementById('stateIcon').textContent = '⚙️';
+        document.getElementById('stateText').textContent = 'يرجى إدخال إعدادات الـ Worker أولاً';
       }
     };
   </script>
