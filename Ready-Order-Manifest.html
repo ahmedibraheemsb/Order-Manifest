@@ -22,6 +22,8 @@
       --accent-light: #eff6ff;
       --accent-dark: #1d4ed8;
       --green: #16a34a;
+      --green-light: #f0fdf4;
+      --green-border: #86efac;
       --red: #dc2626;
       --radius: 12px;
       --radius-sm: 8px;
@@ -81,7 +83,7 @@
       width: 100%;
       overflow-x: auto;
       max-height: 75vh;
-      display: none; /* مخفي في البداية */
+      display: none;
     }
 
     table {
@@ -95,6 +97,7 @@
       padding: 12px 16px;
       font-size: 13px;
       border-bottom: 1px solid var(--border);
+      vertical-align: top;
     }
 
     th {
@@ -109,6 +112,7 @@
     tr:hover { background-color: var(--surface-2); }
 
     .mono { font-family: var(--font-mono); direction: ltr; display: inline-block; }
+    
     .tag-pill {
       background-color: var(--surface-2);
       border: 1px solid var(--border-strong);
@@ -117,7 +121,16 @@
       font-size: 11px;
       color: var(--text-secondary);
       margin-inline-end: 4px;
+      margin-bottom: 4px;
       display: inline-block;
+    }
+
+    /* كلاس التمييز لتاج التغليف */
+    .tag-packed {
+      background-color: var(--green-light);
+      border-color: var(--green-border);
+      color: var(--green);
+      font-weight: 600;
     }
     
     .status-badge {
@@ -129,11 +142,21 @@
       font-weight: 600;
     }
 
-    .notes-cell {
-      max-width: 200px;
+    /* التحكم في عرض آخر عمودين */
+    .col-half {
+      width: 25%;
+      min-width: 200px;
+    }
+    
+    .cell-wrap {
       white-space: normal;
-      font-size: 12px;
+      word-break: break-word;
+      line-height: 1.8;
+    }
+
+    .notes-cell {
       color: var(--text-muted);
+      font-size: 12px;
     }
 
     /* State Box */
@@ -205,13 +228,11 @@
             <th>اسم العميل</th>
             <th>السعر</th>
             <th>رقم التليفون</th>
-            <th>العنوان</th>
             <th>Courier</th>
             <th>Zone</th>
-            <th>Packed By</th>
             <th>تاريخ التغليف</th>
-            <th>Tags</th>
-            <th>Notes</th>
+            <th class="col-half">Tags</th>
+            <th class="col-half">Notes</th>
           </tr>
         </thead>
         <tbody id="tableBody">
@@ -288,20 +309,18 @@
       return `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()}`;
     }
 
-    function formatDateTime(isoString) {
+    // الدالة الجديدة لعرض التاريخ المدمج مع صباحاً/مساءً بدون الوقت
+    function formatPackingDateOnly(isoString) {
       if (!isoString) return '-';
       const d = new Date(isoString);
       const pad = n => String(n).padStart(2, '0');
-      let hours = d.getHours();
-      const minutes = pad(d.getMinutes());
+      const hours = d.getHours();
       const ampm = hours >= 12 ? 'مساءً' : 'صباحاً';
-      hours = hours % 12 || 12;
-      return `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()} الساعة ${pad(hours)}:${minutes} ${ampm}`;
+      return `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()}${ampm}`;
     }
 
     function formatNumber(num) { return Number(num).toLocaleString('en-US'); }
 
-    // هنا بيحصل الـ Pagination
     async function startFetching() {
       if (!isConfigured()) { openSettings(); return; }
       if (isFetching) return;
@@ -331,7 +350,6 @@
 
       try {
         while (hasNextPage) {
-          // تركيب الـ URL بالـ Cursor
           const fetchUrl = new URL(config.url);
           if (cursor) fetchUrl.searchParams.set('cursor', cursor);
 
@@ -343,13 +361,11 @@
           const data = await res.json();
           if (!res.ok || !data.ok) throw new Error(data.error || 'خطأ في الاتصال');
 
-          // إضافة الأوردرات للجدول
           if (data.data && data.data.length > 0) {
             appendRows(data.data);
             currentTotalReady += data.data.length;
             document.getElementById('totalCount').textContent = currentTotalReady;
             
-            // لو أول داتا تيجي نعرض الجدول فوراً ونخفي رسالة التحميل
             if (tableContainer.style.display === 'none') {
               emptyState.style.display = 'none';
               tableContainer.style.display = 'block';
@@ -358,7 +374,6 @@
 
           pagesScanned++;
           
-          // لو لسه الجدول مخفي (يعني مفيش ready orders في أول صفحة)
           if (tableContainer.style.display === 'none') {
             progressText.textContent = `تم فحص ${pagesScanned * 50} أوردر...`;
           }
@@ -367,7 +382,6 @@
           cursor = data.pageInfo.endCursor;
         }
 
-        // خلصنا كل الصفحات
         isFetching = false;
         document.getElementById('refreshBtn').disabled = false;
         
@@ -399,7 +413,13 @@
       let html = '';
       
       orders.forEach(order => {
-        const tagsHtml = order.tags.map(t => `<span class="tag-pill">${t}</span>`).join('');
+        // تمييز الـ Tag لو كان Packed
+        const tagsHtml = order.tags.map(t => {
+          const isPacked = t.toLowerCase() === 'packed';
+          const extraClass = isPacked ? 'tag-packed' : '';
+          return `<span class="tag-pill ${extraClass}">${t}</span>`;
+        }).join('');
+
         html += `
           <tr>
             <td><span class="mono">${order.name}</span></td>
@@ -408,13 +428,11 @@
             <td>${order.customerName}</td>
             <td><span class="mono">${formatNumber(order.totalPrice)}</span></td>
             <td><span class="mono">${order.phone}</span></td>
-            <td>${order.address}</td>
             <td><span class="status-badge">${order.courier}</span></td>
             <td>${order.zone}</td>
-            <td>${order.packedBy}</td>
-            <td><span class="mono">${formatDateTime(order.packingDate)}</span></td>
-            <td>${tagsHtml || '-'}</td>
-            <td class="notes-cell">${order.note || '-'}</td>
+            <td><span class="mono">${formatPackingDateOnly(order.packingDate)}</span></td>
+            <td class="cell-wrap">${tagsHtml || '-'}</td>
+            <td class="notes-cell cell-wrap">${order.note || '-'}</td>
           </tr>
         `;
       });
