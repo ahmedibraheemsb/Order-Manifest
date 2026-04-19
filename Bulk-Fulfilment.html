@@ -154,6 +154,8 @@
     }
 
     .pill-amber { background: var(--amber-light); color: var(--amber); border: 1px solid var(--amber); }
+    .pill-green { background: var(--green-light); color: var(--green); border: 1px solid var(--green-border); }
+    .pill-gray { background: var(--surface-2); color: var(--text-secondary); border: 1px solid var(--border-strong); }
 
     /* Modals & Overlays */
     .overlay {
@@ -243,8 +245,11 @@
         <div class="form-group">
           <label>حالة الطلب (Status)</label>
           <select id="statusFilter">
+            <option value="">الكل (All)</option>
             <option value="unfulfilled">Unfulfilled</option>
             <option value="partial">Partially Fulfilled</option>
+            <option value="fulfilled">Fulfilled</option>
+            <option value="restocked">Restocked</option>
           </select>
         </div>
         <div class="form-group" style="justify-content: flex-end;">
@@ -443,6 +448,14 @@
       }
     }
 
+    function getStatusPillClass(status) {
+      if (!status) return 'pill-gray';
+      const s = status.toUpperCase();
+      if (s === 'FULFILLED') return 'pill-green';
+      if (s === 'UNFULFILLED' || s === 'PARTIALLY_FULFILLED') return 'pill-amber';
+      return 'pill-gray';
+    }
+
     function renderTable() {
       const tbody = document.getElementById('ordersBody');
       const countEl = document.getElementById('resultsCount');
@@ -461,21 +474,27 @@
         const openFOs = order.fulfillmentOrders?.edges?.map(e => e.node.id) || [];
         const foDataAttr = openFOs.join(',');
         
+        // Handle orders with no OPEN fulfillment orders
+        const isFulfillable = openFOs.length > 0;
+        const checkboxHtml = isFulfillable 
+          ? `<input type="checkbox" class="order-cb" data-foids="${foDataAttr}" onclick="updateSelection()">`
+          : `<input type="checkbox" disabled title="لا يوجد Line items متاحة للفلفلة">`;
+
         return `
           <tr>
             <td class="checkbox-cell">
-              <input type="checkbox" class="order-cb" data-foids="${foDataAttr}" onclick="updateSelection()">
+              ${checkboxHtml}
             </td>
             <td><span class="tech-text">${order.name}</span></td>
             <td class="tech-text">${formatDateTime(order.createdAt)}</td>
-            <td><span class="pill pill-amber">${order.displayFulfillmentStatus}</span></td>
+            <td><span class="pill ${getStatusPillClass(order.displayFulfillmentStatus)}">${order.displayFulfillmentStatus}</span></td>
           </tr>
         `;
       }).join('');
     }
 
     function toggleAll(source) {
-      const checkboxes = document.querySelectorAll('.order-cb');
+      const checkboxes = document.querySelectorAll('.order-cb:not([disabled])');
       checkboxes.forEach(cb => cb.checked = source.checked);
       updateSelection();
     }
