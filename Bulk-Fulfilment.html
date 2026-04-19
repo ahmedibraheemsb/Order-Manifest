@@ -470,11 +470,11 @@
       document.getElementById('selectAllCheckbox').checked = false;
 
       tbody.innerHTML = currentOrders.map((order, idx) => {
-        // Extract open fulfillment orders
-        const openFOs = order.fulfillmentOrders?.edges?.map(e => e.node.id) || [];
+        // Extract open fulfillment orders parsed by the Worker
+        const openFOs = order.openFulfillmentOrderIds || [];
         const foDataAttr = openFOs.join(',');
         
-        // Handle orders with no OPEN fulfillment orders
+        // Handle orders with no Fulfillable elements
         const isFulfillable = openFOs.length > 0;
         const checkboxHtml = isFulfillable 
           ? `<input type="checkbox" class="order-cb" data-foids="${foDataAttr}" onclick="updateSelection()">`
