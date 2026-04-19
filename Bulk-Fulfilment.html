@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EcomModa - Bulk Fulfillment</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f3f4f6;
+      --surface: #fff;
+      --surface-2: #f9fafb;
+      --border: #e5e7eb;
+      --border-strong: #d1d5db;
+      --text-primary: #111827;
+      --text-secondary: #6b7280;
+      --text-muted: #6b7280;
+      --accent: #2563eb;
+      --accent-light: #eff6ff;
+      --accent-dark: #1d4ed8;
+      --green: #16a34a;
+      --green-light: #f0fdf4;
+      --green-border: #86efac;
+      --red: #dc2626;
+      --red-light: #fef2f2;
+      --red-border: #fca5a5;
+      --amber: #d97706;
+      --amber-light: #fffbeb;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Noto Sans Arabic', sans-serif;
+      background-color: var(--bg);
+      color: var(--text-primary);
+      padding: 20px;
+    }
+
+    .tech-text {
+      font-family: 'IBM Plex Mono', monospace;
+      direction: ltr;
+      display: inline-block;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .filters-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    input, select {
+      padding: 10px 12px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, select:focus { border-color: var(--accent); }
+
+    .btn {
+      padding: 10px 16px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-dark); }
+    
+    .btn-success { background: var(--green); color: white; }
+    .btn-success:hover { background: #15803d; }
+    .btn-success:disabled { background: var(--border-strong); cursor: not-allowed; }
+
+    .btn-outline { background: transparent; border: 1px solid var(--border-strong); color: var(--text-primary); }
+    .btn-outline:hover { background: var(--surface-2); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: right;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+
+    th {
+      background-color: #e5e7eb;
+      font-weight: 700;
+      border-bottom: 2px solid var(--border-strong);
+    }
+
+    .checkbox-cell { width: 40px; text-align: center; }
+    
+    .pill {
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    .pill-amber { background: var(--amber-light); color: var(--amber); border: 1px solid var(--amber); }
+
+    /* Modals & Overlays */
+    .overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      z-index: 100;
+    }
+
+    .overlay.open { opacity: 1; pointer-events: auto; }
+
+    .modal {
+      background: var(--surface);
+      width: 90%;
+      max-width: 400px;
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .modal-header { font-size: 14px; font-weight: 700; margin-bottom: 15px; }
+    .modal-body { font-size: 12px; color: var(--text-secondary); margin-bottom: 20px; line-height: 1.5; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 10px; }
+
+    /* Toasts */
+    #toastContainer {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 200;
+    }
+
+    .toast {
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      color: white;
+      box-shadow: var(--shadow);
+      animation: slideIn 0.3s ease forwards;
+    }
+
+    .toast.success { background-color: var(--green); }
+    .toast.error { background-color: var(--red); }
+    .toast.info { background-color: #000; }
+
+    @keyframes slideIn {
+      from { transform: translateX(-20px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>
+      تأكيد الطلبات المجمّع (Bulk Fulfill)
+      <button class="btn btn-outline" onclick="openSettings()">⚙️ الإعدادات</button>
+    </h1>
+
+    <div class="card">
+      <div class="filters-grid">
+        <div class="form-group">
+          <label>من تاريخ (Date From)</label>
+          <input type="date" id="dateFrom">
+        </div>
+        <div class="form-group">
+          <label>إلى تاريخ (Date To)</label>
+          <input type="date" id="dateTo">
+        </div>
+        <div class="form-group">
+          <label>حالة الطلب (Status)</label>
+          <select id="statusFilter">
+            <option value="unfulfilled">Unfulfilled</option>
+            <option value="partial">Partially Fulfilled</option>
+          </select>
+        </div>
+        <div class="form-group" style="justify-content: flex-end;">
+          <button class="btn btn-primary" onclick="loadOrders()" id="searchBtn">بحث عن الطلبات</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <div style="font-size: 14px; font-weight: 600;">النتائج (<span id="resultsCount" class="tech-text">0</span>)</div>
+        <button class="btn btn-success" id="fulfillSelectedBtn" onclick="prepareFulfill()" disabled>
+          Fulfill Selected
+        </button>
+      </div>
+
+      <div style="overflow-x: auto;">
+        <table id="ordersTable">
+          <thead>
+            <tr>
+              <th class="checkbox-cell"><input type="checkbox" id="selectAllCheckbox" onclick="toggleAll(this)"></th>
+              <th>رقم الأوردر</th>
+              <th>تاريخ الإنشاء</th>
+              <th>الحالة الحالية</th>
+            </tr>
+          </thead>
+          <tbody id="ordersBody">
+            <tr><td colspan="4" class="loading">قم بالبحث لعرض الأوردرات</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm Modal -->
+  <div class="overlay" id="confirmOverlay">
+    <div class="modal">
+      <div class="modal-header" id="confirmHeader">تأكيد</div>
+      <div class="modal-body" id="confirmBody">هل أنت متأكد؟</div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeConfirm()">إلغاء</button>
+        <button class="btn btn-success" id="confirmOkBtn">تأكيد</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="overlay" id="settingsOverlay">
+    <div class="modal">
+      <div class="modal-header">إعدادات الأداة</div>
+      <div class="modal-body">
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label>Worker URL</label>
+          <input type="text" id="settingUrl" class="tech-text" placeholder="https://...">
+        </div>
+        <div class="form-group">
+          <label>Worker Secret</label>
+          <input type="password" id="settingSecret" class="tech-text">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="document.getElementById('settingsOverlay').classList.remove('open')">إغلاق</button>
+        <button class="btn btn-primary" onclick="saveSettings()">حفظ الإعدادات</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastContainer"></div>
+
+  <script>
+    const LS_URL_KEY = 'bulkfulfill_worker_url';
+    const LS_SEC_KEY = 'bulkfulfill_worker_secret';
+    let currentOrders = [];
+
+    // Initialize formatting
+    function formatDateTime(isoString) {
+      const d = new Date(isoString);
+      const pad = n => String(n).padStart(2, '0');
+      let hours = d.getHours();
+      const minutes = pad(d.getMinutes());
+      const ampm = hours >= 12 ? 'مساءً' : 'صباحاً';
+      hours = hours % 12 || 12;
+      return `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()} الساعة ${pad(hours)}:${minutes} ${ampm}`;
+    }
+
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = msg;
+      container.appendChild(toast);
+      setTimeout(() => { toast.remove(); }, 4000);
+    }
+
+    function getConfig() {
+      return {
+        url: localStorage.getItem(LS_URL_KEY) || '',
+        secret: localStorage.getItem(LS_SEC_KEY) || '',
+      };
+    }
+
+    function isConfigured() {
+      const cfg = getConfig();
+      return cfg.url && cfg.secret;
+    }
+
+    function openSettings() {
+      document.getElementById('settingUrl').value = localStorage.getItem(LS_URL_KEY) || '';
+      document.getElementById('settingSecret').value = localStorage.getItem(LS_SEC_KEY) || '';
+      document.getElementById('settingsOverlay').classList.add('open');
+    }
+
+    function saveSettings() {
+      localStorage.setItem(LS_URL_KEY, document.getElementById('settingUrl').value.trim());
+      localStorage.setItem(LS_SEC_KEY, document.getElementById('settingSecret').value.trim());
+      document.getElementById('settingsOverlay').classList.remove('open');
+      showToast('تم حفظ الإعدادات', 'success');
+    }
+
+    async function apiCall(endpointPath, params) {
+      if (!isConfigured()) { 
+        openSettings(); 
+        throw new Error('الإعدادات غير مكتملة'); 
+      }
+      
+      const { url, secret } = getConfig();
+      // Clean base url to avoid double slashes
+      const baseUrl = url.endsWith('/') ? url.slice(0, -1) : url;
+      
+      const res = await fetch(`${baseUrl}${endpointPath}`, { 
+        method: 'POST',
+        headers: { 
+          'X-Worker-Secret': secret,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(params)
+      });
+      
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'خطأ في الاتصال');
+      return data;
+    }
+
+    function openConfirm(headerHTML, bodyHTML, okLabel, okClass, onConfirm) {
+      document.getElementById('confirmHeader').innerHTML = headerHTML;
+      document.getElementById('confirmBody').innerHTML = bodyHTML;
+
+      const okBtn = document.getElementById('confirmOkBtn');
+      const newOk = okBtn.cloneNode(true);
+      okBtn.parentNode.replaceChild(newOk, okBtn);
+
+      newOk.textContent = okLabel;
+      newOk.className = 'btn ' + okClass;
+      newOk.addEventListener('click', () => {
+        closeConfirm();
+        onConfirm();
+      });
+
+      document.getElementById('confirmOverlay').classList.add('open');
+    }
+
+    function closeConfirm() {
+      document.getElementById('confirmOverlay').classList.remove('open');
+    }
+
+    // --- Core Logic ---
+
+    async function loadOrders() {
+      const dateFrom = document.getElementById('dateFrom').value;
+      const dateTo = document.getElementById('dateTo').value;
+      const status = document.getElementById('statusFilter').value;
+      const btn = document.getElementById('searchBtn');
+      const tbody = document.getElementById('ordersBody');
+
+      if (!dateFrom || !dateTo) {
+        showToast('برجاء تحديد التاريخ (من وإلى)', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'جاري البحث...';
+      tbody.innerHTML = '<tr><td colspan="4" class="loading">جاري جلب البيانات من شوبيفاي...</td></tr>';
+      currentOrders = [];
+      updateSelection();
+
+      try {
+        const res = await apiCall('/api/orders', { dateFrom, dateTo, status });
+        currentOrders = res.data;
+        renderTable();
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="4" class="loading" style="color: var(--red);">${err.message}</td></tr>`;
+        showToast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'بحث عن الطلبات';
+      }
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('ordersBody');
+      const countEl = document.getElementById('resultsCount');
+      
+      countEl.textContent = Number(currentOrders.length).toLocaleString('en-US');
+      
+      if (currentOrders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="loading">لا توجد نتائج مطابقة</td></tr>';
+        return;
+      }
+
+      document.getElementById('selectAllCheckbox').checked = false;
+
+      tbody.innerHTML = currentOrders.map((order, idx) => {
+        // Extract open fulfillment orders
+        const openFOs = order.fulfillmentOrders?.edges?.map(e => e.node.id) || [];
+        const foDataAttr = openFOs.join(',');
+        
+        return `
+          <tr>
+            <td class="checkbox-cell">
+              <input type="checkbox" class="order-cb" data-foids="${foDataAttr}" onclick="updateSelection()">
+            </td>
+            <td><span class="tech-text">${order.name}</span></td>
+            <td class="tech-text">${formatDateTime(order.createdAt)}</td>
+            <td><span class="pill pill-amber">${order.displayFulfillmentStatus}</span></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function toggleAll(source) {
+      const checkboxes = document.querySelectorAll('.order-cb');
+      checkboxes.forEach(cb => cb.checked = source.checked);
+      updateSelection();
+    }
+
+    function updateSelection() {
+      const checked = document.querySelectorAll('.order-cb:checked');
+      const btn = document.getElementById('fulfillSelectedBtn');
+      btn.disabled = checked.length === 0;
+      btn.textContent = `Fulfill Selected (${Number(checked.length).toLocaleString('en-US')})`;
+    }
+
+    function prepareFulfill() {
+      const checked = document.querySelectorAll('.order-cb:checked');
+      let allFoIds = [];
+      
+      checked.forEach(cb => {
+        const foids = cb.getAttribute('data-foids');
+        if (foids) {
+          allFoIds = allFoIds.concat(foids.split(','));
+        }
+      });
+
+      if (allFoIds.length === 0) {
+        showToast('الأوردرات المحددة لا تحتوي على أي Line items جاهزة للفلفلة (Fulfillment Orders).', 'error');
+        return;
+      }
+
+      openConfirm(
+        'تأكيد Fulfill',
+        `أنت على وشك عمل Fulfill لعدد <span class="tech-text" style="font-weight:700;">${Number(checked.length).toLocaleString('en-US')}</span> أوردر.<br>هل أنت متأكد؟ (لا يمكن التراجع عن هذه الخطوة إلا بـ Cancel Order)`,
+        'نعم، Fulfill',
+        'btn-success',
+        () => executeFulfill(allFoIds)
+      );
+    }
+
+    async function executeFulfill(fulfillmentOrderIds) {
+      const btn = document.getElementById('fulfillSelectedBtn');
+      btn.disabled = true;
+      btn.textContent = 'جاري التنفيذ...';
+      
+      try {
+        const res = await apiCall('/api/fulfill', { fulfillmentOrderIds });
+        showToast(`نجح التنفيذ! تم فلفلة ${Number(res.data.success).toLocaleString('en-US')} أوردر.`, 'success');
+        // Reload table to reflect changes
+        loadOrders();
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Fulfill Selected';
+      }
+    }
+
+    // Auto-check config on load
+    if (!isConfigured()) {
+      setTimeout(openSettings, 500);
+    }
+  </script>
+</body>
+</html>
