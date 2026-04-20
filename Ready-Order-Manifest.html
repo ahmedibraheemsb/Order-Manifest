@@ -77,6 +77,8 @@
     .btn:hover:not(:disabled) { background-color: var(--surface-2); }
     .btn-primary { background-color: var(--accent); color: white; border-color: var(--accent); }
     .btn-primary:hover:not(:disabled) { background-color: var(--accent-dark); }
+    .btn-primary.active { background-color: var(--green); border-color: var(--green); }
+    .btn-primary.active:hover { background-color: #15803d; }
     .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
     .card {
@@ -129,7 +131,8 @@
       vertical-align: top;
     }
 
-    th {
+    /* Sticky Headers */
+    thead tr:nth-child(1) th {
       background-color: #e5e7eb;
       font-weight: 700;
       color: var(--text-primary);
@@ -138,10 +141,47 @@
       z-index: 10;
       white-space: nowrap;
     }
+    
+    thead tr:nth-child(2) th {
+      background-color: var(--surface-2);
+      position: sticky;
+      top: 45px; /* Offset for the first row */
+      z-index: 9;
+      padding: 6px 8px;
+      border-bottom: 2px solid var(--border-strong);
+    }
+
+    /* Column Filters */
+    .col-filter {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: var(--font-arabic);
+      outline: none;
+      background: var(--surface);
+    }
+    .col-filter:focus { border-color: var(--accent); }
+    .col-filter::placeholder { color: var(--text-muted); }
 
     /* Zebra Striping & Hover */
     tbody tr:nth-child(even) { background-color: var(--surface-2); }
     tbody tr:hover { background-color: #f3f4f6; }
+    tbody tr.selected { background-color: var(--accent-light); }
+
+    /* Checkbox */
+    .checkbox-cell {
+      width: 40px;
+      text-align: center;
+      padding: 12px 8px;
+    }
+    input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: var(--accent);
+    }
 
     /* Typography & Utilities */
     .mono { font-family: var(--font-mono); direction: ltr; display: inline-block; }
@@ -203,7 +243,7 @@
       display: inline-block;
     }
 
-    .col-wide { width: 22%; min-width: 180px; }
+    .col-wide { width: 20%; min-width: 160px; }
     
     .notes-container {
       max-height: 80px;
@@ -289,8 +329,8 @@
     
     <!-- Toolbar -->
     <div class="toolbar" id="toolbar" style="display: none;">
-      <input type="text" id="searchInput" class="search-input" placeholder="بحث بالاسم، رقم الأوردر، أو الموبايل..." onkeyup="handleSearch()">
-      <button class="btn btn-primary" onclick="exportToExcel()">📊 تصدير XLSX</button>
+      <input type="text" id="globalSearchInput" class="search-input" placeholder="بحث سريع في كل البيانات..." oninput="applyFilters()">
+      <button class="btn btn-primary" id="exportBtn" onclick="exportToExcel()">📊 تصدير XLSX</button>
     </div>
 
     <!-- Empty/Error State -->
@@ -303,7 +343,11 @@
     <div class="table-container" id="tableContainer" style="display: none;">
       <table>
         <thead>
+          <!-- Main Header -->
           <tr>
+            <th class="checkbox-cell">
+              <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this.checked)" title="تحديد الكل">
+            </th>
             <th>رقم الأوردر</th>
             <th>تاريخ الإنشاء</th>
             <th>العميل</th>
@@ -312,6 +356,18 @@
             <th>تاريخ التغليف</th>
             <th class="col-wide">Tags</th>
             <th class="col-wide">Notes</th>
+          </tr>
+          <!-- Filters Header -->
+          <tr>
+            <th class="checkbox-cell"></th>
+            <th><input type="text" class="col-filter mono" placeholder="فلتر..." id="filter_order" oninput="applyFilters()"></th>
+            <th><input type="text" class="col-filter mono" placeholder="فلتر..." id="filter_date" oninput="applyFilters()"></th>
+            <th><input type="text" class="col-filter" placeholder="اسم / تليفون..." id="filter_customer" oninput="applyFilters()"></th>
+            <th><input type="text" class="col-filter" placeholder="سعر / قطع..." id="filter_finance" oninput="applyFilters()"></th>
+            <th><input type="text" class="col-filter" placeholder="Courier / Zone..." id="filter_shipping" oninput="applyFilters()"></th>
+            <th><input type="text" class="col-filter mono" placeholder="فلتر..." id="filter_packdate" oninput="applyFilters()"></th>
+            <th><input type="text" class="col-filter" placeholder="فلتر..." id="filter_tags" oninput="applyFilters()"></th>
+            <th><input type="text" class="col-filter" placeholder="فلتر..." id="filter_notes" oninput="applyFilters()"></th>
           </tr>
         </thead>
         <tbody id="skeletonBody" style="display: none;">
@@ -351,8 +407,9 @@
     
     // State Management
     let isFetching = false;
-    let allOrders = []; // Store all fetched orders for search/export
+    let allOrders = []; 
     let filteredOrders = [];
+    let selectedOrderIds = new Set(); // To keep track of checked rows
 
     // --- Core Utilities ---
     function getConfig() {
@@ -373,7 +430,6 @@
       toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 3000);
     }
 
-    // Fallback copy method safe for iFrames
     function copyToClipboard(text, label) {
       const textArea = document.createElement("textarea");
       textArea.value = text;
@@ -435,6 +491,7 @@
       let html = '';
       for(let i=0; i<8; i++) {
         html += `<tr class="skeleton-row">
+          <td><div class="skeleton-box" style="width: 16px; height: 16px; margin: auto;"></div></td>
           <td><div class="skeleton-box" style="width: 80px;"></div></td>
           <td><div class="skeleton-box" style="width: 90px;"></div></td>
           <td><div class="skeleton-box" style="width: 120px;"></div><div class="skeleton-box" style="width: 90px; margin-top: 6px; height: 12px;"></div></td>
@@ -471,7 +528,13 @@
       // Reset State
       allOrders = [];
       filteredOrders = [];
-      document.getElementById('searchInput').value = '';
+      selectedOrderIds.clear();
+      updateExportButtonUI();
+      
+      // Clear inputs
+      document.getElementById('globalSearchInput').value = '';
+      document.querySelectorAll('.col-filter').forEach(i => i.value = '');
+      document.getElementById('selectAllCheckbox').checked = false;
       document.getElementById('tableBody').innerHTML = '';
       document.getElementById('totalCount').textContent = '0';
       
@@ -501,11 +564,17 @@
           if (!res.ok || !data.ok) throw new Error(data.error || 'خطأ في الاتصال');
 
           if (data.data && data.data.length > 0) {
-            allOrders = allOrders.concat(data.data);
-            filteredOrders = [...allOrders]; // reset filter
+            // Process dates for easier searching later
+            const processedData = data.data.map(o => ({
+              ...o,
+              _formattedDate: formatDate(o.createdAt),
+              _formattedPackDate: formatPackingDateOnly(o.packingDate)
+            }));
+            
+            allOrders = allOrders.concat(processedData);
+            applyFilters(); // Re-apply filters to update view
             
             hideSkeleton();
-            renderTable(filteredOrders);
             document.getElementById('totalCount').textContent = allOrders.length;
           }
 
@@ -546,12 +615,124 @@
       }
     }
 
+    // --- Selection Logic ---
+    function toggleRowSelection(orderId, isChecked) {
+      if (isChecked) {
+        selectedOrderIds.add(orderId);
+      } else {
+        selectedOrderIds.delete(orderId);
+      }
+      
+      // Update row background
+      const row = document.getElementById(`row-${orderId}`);
+      if (row) {
+        isChecked ? row.classList.add('selected') : row.classList.remove('selected');
+      }
+
+      // Check if all visible rows are selected to update the header checkbox
+      const allVisibleSelected = filteredOrders.length > 0 && filteredOrders.every(o => selectedOrderIds.has(o.id));
+      document.getElementById('selectAllCheckbox').checked = allVisibleSelected;
+      
+      updateExportButtonUI();
+    }
+
+    function toggleSelectAll(isChecked) {
+      // Apply to CURRENTLY FILTERED orders only
+      filteredOrders.forEach(o => {
+        if (isChecked) {
+          selectedOrderIds.add(o.id);
+        } else {
+          selectedOrderIds.delete(o.id);
+        }
+        
+        const row = document.getElementById(`row-${o.id}`);
+        if (row) {
+          isChecked ? row.classList.add('selected') : row.classList.remove('selected');
+        }
+      });
+      
+      // Update all visible checkboxes
+      document.querySelectorAll('.row-checkbox').forEach(cb => {
+        cb.checked = isChecked;
+      });
+
+      updateExportButtonUI();
+    }
+
+    function updateExportButtonUI() {
+      const btn = document.getElementById('exportBtn');
+      if (selectedOrderIds.size > 0) {
+        btn.innerHTML = `📊 تصدير المحدد (${selectedOrderIds.size})`;
+        btn.classList.add('active');
+      } else {
+        btn.innerHTML = `📊 تصدير XLSX`;
+        btn.classList.remove('active');
+      }
+    }
+
+    // --- Filtering Logic ---
+    function applyFilters() {
+      const globalTerm = document.getElementById('globalSearchInput').value.trim().toLowerCase();
+      
+      // Get column filter values
+      const f_order = document.getElementById('filter_order').value.trim().toLowerCase();
+      const f_date = document.getElementById('filter_date').value.trim().toLowerCase();
+      const f_customer = document.getElementById('filter_customer').value.trim().toLowerCase();
+      const f_finance = document.getElementById('filter_finance').value.trim().toLowerCase();
+      const f_shipping = document.getElementById('filter_shipping').value.trim().toLowerCase();
+      const f_packdate = document.getElementById('filter_packdate').value.trim().toLowerCase();
+      const f_tags = document.getElementById('filter_tags').value.trim().toLowerCase();
+      const f_notes = document.getElementById('filter_notes').value.trim().toLowerCase();
+
+      filteredOrders = allOrders.filter(order => {
+        // 1. Global Search
+        if (globalTerm) {
+          const globalMatch = 
+            (order.name || '').toLowerCase().includes(globalTerm) ||
+            (order.customerName || '').toLowerCase().includes(globalTerm) ||
+            (order.phone || '').toLowerCase().includes(globalTerm);
+          if (!globalMatch) return false;
+        }
+
+        // 2. Column Filters
+        if (f_order && !(order.name || '').toLowerCase().includes(f_order)) return false;
+        if (f_date && !order._formattedDate.includes(f_date)) return false;
+        if (f_customer && !((order.customerName || '').toLowerCase().includes(f_customer) || (order.phone || '').toLowerCase().includes(f_customer))) return false;
+        if (f_finance && !(String(order.totalPrice).includes(f_finance) || String(order.totalItems).includes(f_finance))) return false;
+        if (f_shipping && !((order.courier || '').toLowerCase().includes(f_shipping) || (order.zone || '').toLowerCase().includes(f_shipping))) return false;
+        if (f_packdate && !order._formattedPackDate.includes(f_packdate)) return false;
+        
+        if (f_tags) {
+          const tagsStr = (order.tags || []).join(' ').toLowerCase();
+          if (!tagsStr.includes(f_tags)) return false;
+        }
+        
+        if (f_notes && !(order.note || '').toLowerCase().includes(f_notes)) return false;
+
+        return true;
+      });
+
+      renderTable(filteredOrders);
+      
+      // Check header checkbox state after filter changes
+      const allVisibleSelected = filteredOrders.length > 0 && filteredOrders.every(o => selectedOrderIds.has(o.id));
+      document.getElementById('selectAllCheckbox').checked = allVisibleSelected;
+    }
+
     // --- Rendering ---
     function renderTable(orders) {
       const tbody = document.getElementById('tableBody');
       let html = '';
       
+      if (orders.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:40px; color:var(--text-muted);">لا توجد نتائج مطابقة للبحث</td></tr>`;
+        return;
+      }
+      
       orders.forEach(order => {
+        const isSelected = selectedOrderIds.has(order.id);
+        const rowClass = isSelected ? 'selected' : '';
+
         // Handle Tags
         const tagsHtml = order.tags.map(t => {
           const isPacked = t.toLowerCase() === 'packed';
@@ -563,11 +744,14 @@
         const cleanPhone = order.phone.replace(/[^0-9+]/g, '');
 
         html += `
-          <tr>
+          <tr id="row-${order.id}" class="${rowClass}">
+            <td class="checkbox-cell">
+              <input type="checkbox" class="row-checkbox" value="${order.id}" ${isSelected ? 'checked' : ''} onchange="toggleRowSelection('${order.id}', this.checked)">
+            </td>
             <td>
               <span class="mono copyable" onclick="copyToClipboard('${order.name}', 'رقم الأوردر')" title="نسخ رقم الأوردر">${order.name}</span>
             </td>
-            <td><span class="mono">${formatDate(order.createdAt)}</span></td>
+            <td><span class="mono">${order._formattedDate}</span></td>
             <td>
               <div>${order.customerName}</div>
               <span class="mono sub-text copyable" onclick="copyToClipboard('${cleanPhone}', 'رقم التليفون')" title="نسخ رقم التليفون" dir="ltr">${order.phone}</span>
@@ -582,7 +766,7 @@
               <span class="status-badge">${order.courier}</span>
               <span class="sub-text">${order.zone !== '-' ? order.zone : 'بدون زون'}</span>
             </td>
-            <td><span class="mono">${formatPackingDateOnly(order.packingDate)}</span></td>
+            <td><span class="mono">${order._formattedPackDate}</span></td>
             <td>${tagsHtml || '-'}</td>
             <td>
               <div class="notes-container">${order.note || '-'}</div>
@@ -594,33 +778,19 @@
       tbody.innerHTML = html;
     }
 
-    // --- Local Search ---
-    function handleSearch() {
-      const term = document.getElementById('searchInput').value.trim().toLowerCase();
-      
-      if (!term) {
-        filteredOrders = [...allOrders];
-      } else {
-        filteredOrders = allOrders.filter(order => {
-          const nameMatch = (order.customerName || '').toLowerCase().includes(term);
-          const idMatch = (order.name || '').toLowerCase().includes(term);
-          const phoneMatch = (order.phone || '').toLowerCase().includes(term);
-          return nameMatch || idMatch || phoneMatch;
-        });
-      }
-      
-      renderTable(filteredOrders);
-      document.getElementById('totalCount').textContent = filteredOrders.length;
-    }
-
     // --- Excel Export ---
     async function exportToExcel() {
-      if (filteredOrders.length === 0) {
+      // Determine what to export: selected OR filtered
+      const ordersToExport = selectedOrderIds.size > 0 
+        ? allOrders.filter(o => selectedOrderIds.has(o.id)) 
+        : filteredOrders;
+
+      if (ordersToExport.length === 0) {
         showToast('لا توجد بيانات للتصدير', 'error');
         return;
       }
 
-      showToast('جاري تحضير ملف الإكسيل...', 'info');
+      showToast(`جاري تحضير ملف الإكسيل (${ordersToExport.length} أوردر)...`, 'info');
       
       const workbook = new ExcelJS.Workbook();
       workbook.views = [{ rightToLeft: true }];
@@ -648,17 +818,17 @@
       sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
 
       // Add Data
-      filteredOrders.forEach(order => {
+      ordersToExport.forEach(order => {
         const row = sheet.addRow({
           name: order.name,
-          createdAt: formatDate(order.createdAt),
+          createdAt: order._formattedDate,
           customerName: order.customerName,
           phone: order.phone,
           totalItems: order.totalItems,
           totalPrice: order.totalPrice || null,
           courier: order.courier,
           zone: order.zone !== '-' ? order.zone : null,
-          packingDate: formatPackingDateOnly(order.packingDate),
+          packingDate: order._formattedPackDate,
           tags: order.tags.join(', '),
           note: order.note || null
         });
@@ -673,7 +843,6 @@
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       
-      // Filename includes today's date
       const today = new Date();
       const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
       link.download = `Ready_Orders_${dateStr}.xlsx`;
@@ -683,6 +852,11 @@
       document.body.removeChild(link);
       
       showToast('تم تحميل الملف بنجاح');
+      
+      // الاختياري: لو حابب تفك التحديد بعد التصدير مباشرة
+      // selectedOrderIds.clear();
+      // applyFilters();
+      // updateExportButtonUI();
     }
 
     // --- Init ---
