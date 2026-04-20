@@ -185,6 +185,17 @@
 
     /* Typography & Utilities */
     .mono { font-family: var(--font-mono); direction: ltr; display: inline-block; }
+
+    .order-link {
+      font-family: var(--font-mono);
+      direction: ltr;
+      display: inline-block;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.15s;
+    }
+    .order-link:hover { color: var(--accent-dark); text-decoration: underline; }
     
     .sub-text {
       display: block;
@@ -392,6 +403,10 @@
         <label>Worker Secret</label>
         <input type="password" id="workerSecretInput" dir="ltr">
       </div>
+      <div class="input-group">
+        <label>Shop Domain (للينك الأوردرات)</label>
+        <input type="text" id="shopDomainInput" placeholder="6c7e1a-53.myshopify.com" dir="ltr">
+      </div>
       <div class="modal-actions">
         <button class="btn" onclick="closeSettings()">إلغاء</button>
         <button class="btn btn-primary" onclick="saveSettings()">حفظ</button>
@@ -402,8 +417,9 @@
   <div id="toast"></div>
 
   <script>
-    const LS_URL_KEY = 'ready_orders_worker_url';
-    const LS_SEC_KEY = 'ready_orders_worker_secret';
+    const LS_URL_KEY    = 'ready_orders_worker_url';
+    const LS_SEC_KEY    = 'ready_orders_worker_secret';
+    const LS_DOMAIN_KEY = 'ready_orders_shop_domain';
     
     // State Management
     let isFetching = false;
@@ -413,7 +429,11 @@
 
     // --- Core Utilities ---
     function getConfig() {
-      return { url: localStorage.getItem(LS_URL_KEY) || '', secret: localStorage.getItem(LS_SEC_KEY) || '' };
+      return {
+        url:        localStorage.getItem(LS_URL_KEY)    || '',
+        secret:     localStorage.getItem(LS_SEC_KEY)    || '',
+        shopDomain: localStorage.getItem(LS_DOMAIN_KEY) || '',
+      };
     }
 
     function isConfigured() {
@@ -470,16 +490,18 @@
     // --- Modal Actions ---
     function openSettings() {
       const config = getConfig();
-      document.getElementById('workerUrlInput').value = config.url;
+      document.getElementById('workerUrlInput').value    = config.url;
       document.getElementById('workerSecretInput').value = config.secret;
+      document.getElementById('shopDomainInput').value   = config.shopDomain;
       document.getElementById('settingsOverlay').classList.add('open');
     }
 
     function closeSettings() { document.getElementById('settingsOverlay').classList.remove('open'); }
 
     function saveSettings() {
-      localStorage.setItem(LS_URL_KEY, document.getElementById('workerUrlInput').value.trim());
-      localStorage.setItem(LS_SEC_KEY, document.getElementById('workerSecretInput').value.trim());
+      localStorage.setItem(LS_URL_KEY,    document.getElementById('workerUrlInput').value.trim());
+      localStorage.setItem(LS_SEC_KEY,    document.getElementById('workerSecretInput').value.trim());
+      localStorage.setItem(LS_DOMAIN_KEY, document.getElementById('shopDomainInput').value.trim().replace(/^https?:\/\//, '').replace(/\/$/, ''));
       closeSettings();
       showToast('تم حفظ الإعدادات');
       startFetching();
@@ -729,13 +751,23 @@
 
         const cleanPhone = order.phone.replace(/[^0-9+]/g, '');
 
+        // بناء الـ URL لصفحة الأوردر في شوبيفاي
+        const { shopDomain } = getConfig();
+        const numericId = order.id.replace('gid://shopify/Order/', '');
+        const orderAdminUrl = shopDomain
+          ? `https://${shopDomain}/admin/orders/${numericId}`
+          : null;
+
         html += `
           <tr id="row-${safeId}" class="${rowClass}">
             <td class="checkbox-cell">
               <input type="checkbox" class="row-checkbox" data-id="${order.id}" ${isSelected ? 'checked' : ''} onchange="toggleRowSelection(decodeURIComponent(this.dataset.id), this.checked)">
             </td>
             <td>
-              <span class="mono copyable" onclick="copyToClipboard('${order.name}', 'رقم الأوردر')" title="نسخ رقم الأوردر">${order.name}</span>
+              ${orderAdminUrl
+                ? `<a class="mono order-link" href="${orderAdminUrl}" target="_blank" rel="noopener" title="فتح الأوردر في شوبيفاي">${order.name}</a>`
+                : `<span class="mono">${order.name}</span>`
+              }
             </td>
             <td><span class="mono">${order._formattedDate}</span></td>
             <td>
