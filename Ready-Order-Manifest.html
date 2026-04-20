@@ -736,6 +736,9 @@
         return;
       }
       
+      // اجلب الـ shopDomain مرة واحدة برة الـ loop
+      const { shopDomain } = getConfig();
+
       let html = '';
       orders.forEach(order => {
         const isSelected = selectedOrderIds.has(order.id);
@@ -752,7 +755,6 @@
         const cleanPhone = order.phone.replace(/[^0-9+]/g, '');
 
         // بناء الـ URL لصفحة الأوردر في شوبيفاي
-        const { shopDomain } = getConfig();
         const numericId = order.id.replace('gid://shopify/Order/', '');
         const orderAdminUrl = shopDomain
           ? `https://${shopDomain}/admin/orders/${numericId}`
@@ -766,7 +768,7 @@
             <td>
               ${orderAdminUrl
                 ? `<a class="mono order-link" href="${orderAdminUrl}" target="_blank" rel="noopener" title="فتح الأوردر في شوبيفاي">${order.name}</a>`
-                : `<span class="mono">${order.name}</span>`
+                : `<span class="mono" style="cursor:pointer;color:var(--text-muted)" onclick="showToast('أضف Shop Domain في الإعدادات لتفعيل الرابط','error')" title="أضف Shop Domain في الإعدادات">${order.name} 🔗</span>`
               }
             </td>
             <td><span class="mono">${order._formattedDate}</span></td>
