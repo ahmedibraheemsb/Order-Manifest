@@ -4,10 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EcomModa - الأوردرات الجاهزة للتغليف</title>
+  
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
+  <!-- ExcelJS Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+
   <style>
     :root {
       --bg: #f3f4f6;
@@ -17,7 +21,7 @@
       --border-strong: #d1d5db;
       --text-primary: #111827;
       --text-secondary: #6b7280;
-      --text-muted: #6b7280;
+      --text-muted: #9ca3af;
       --accent: #2563eb;
       --accent-light: #eff6ff;
       --accent-dark: #1d4ed8;
@@ -42,6 +46,7 @@
       padding: 20px;
     }
 
+    /* Header & Buttons */
     .header-bar {
       display: flex;
       justify-content: space-between;
@@ -65,10 +70,13 @@
       cursor: pointer;
       color: var(--text-primary);
       transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
-    .btn:hover { background-color: var(--surface-2); }
+    .btn:hover:not(:disabled) { background-color: var(--surface-2); }
     .btn-primary { background-color: var(--accent); color: white; border-color: var(--accent); }
-    .btn-primary:hover { background-color: var(--accent-dark); }
+    .btn-primary:hover:not(:disabled) { background-color: var(--accent-dark); }
     .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
     .card {
@@ -79,18 +87,39 @@
       overflow: hidden;
     }
 
+    /* Toolbar (Search & Export) */
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      background-color: var(--surface);
+    }
+    
+    .search-input {
+      padding: 8px 12px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-arabic);
+      font-size: 13px;
+      width: 280px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-input:focus { border-color: var(--accent); }
+
+    /* Table Styles */
     .table-container {
       width: 100%;
       overflow-x: auto;
       max-height: 75vh;
-      display: none;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
       text-align: right;
-      white-space: nowrap;
     }
 
     th, td {
@@ -107,14 +136,41 @@
       position: sticky;
       top: 0;
       z-index: 10;
+      white-space: nowrap;
     }
 
-    tr:hover { background-color: var(--surface-2); }
+    /* Zebra Striping & Hover */
+    tbody tr:nth-child(even) { background-color: var(--surface-2); }
+    tbody tr:hover { background-color: #f3f4f6; }
 
+    /* Typography & Utilities */
     .mono { font-family: var(--font-mono); direction: ltr; display: inline-block; }
     
+    .sub-text {
+      display: block;
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .copyable {
+      cursor: pointer;
+      position: relative;
+      transition: color 0.2s;
+    }
+    .copyable:hover { color: var(--accent); }
+    .copyable::after {
+      content: '📋';
+      font-size: 10px;
+      position: absolute;
+      margin-right: 4px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .copyable:hover::after { opacity: 1; }
+
     .tag-pill {
-      background-color: var(--surface-2);
+      background-color: #e5e7eb;
       border: 1px solid var(--border-strong);
       padding: 2px 8px;
       border-radius: 9999px;
@@ -124,39 +180,55 @@
       margin-bottom: 4px;
       display: inline-block;
     }
-
-    /* كلاس التمييز لتاج التغليف */
-    .tag-packed {
-      background-color: var(--green-light);
-      border-color: var(--green-border);
-      color: var(--green);
-      font-weight: 600;
-    }
+    .tag-packed { background-color: var(--green-light); border-color: var(--green-border); color: var(--green); font-weight: 600; }
     
     .status-badge {
       background-color: var(--accent-light);
       color: var(--accent-dark);
-      padding: 4px 8px;
+      padding: 2px 8px;
       border-radius: var(--radius-sm);
       font-size: 11px;
       font-weight: 600;
+      display: inline-block;
     }
 
-    /* التحكم في عرض آخر عمودين */
-    .col-half {
-      width: 25%;
-      min-width: 200px;
+    .count-pill {
+      background: var(--border-strong);
+      color: var(--text-primary);
+      padding: 2px 6px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-right: 6px;
+      display: inline-block;
     }
+
+    .col-wide { width: 22%; min-width: 180px; }
     
-    .cell-wrap {
-      white-space: normal;
+    .notes-container {
+      max-height: 80px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-strong) transparent;
+      color: var(--text-secondary);
+      font-size: 12px;
+      white-space: pre-wrap;
       word-break: break-word;
-      line-height: 1.8;
+      padding-left: 8px;
     }
 
-    .notes-cell {
-      color: var(--text-muted);
-      font-size: 12px;
+    /* Skeleton Loader */
+    .skeleton-row td { padding: 16px; }
+    .skeleton-box {
+      height: 16px;
+      border-radius: 4px;
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+    }
+    @keyframes loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
     }
 
     /* State Box */
@@ -195,10 +267,12 @@
     #toast {
       position: fixed; bottom: 24px; right: 24px; padding: 12px 24px; border-radius: var(--radius-sm);
       color: white; font-size: 14px; font-weight: 600; transform: translateY(100px); transition: transform 0.3s; z-index: 200;
+      box-shadow: var(--shadow);
     }
     #toast.show { transform: translateY(0); }
     #toast.success { background-color: var(--green); }
     #toast.error { background-color: var(--red); }
+    #toast.info { background-color: var(--text-primary); }
   </style>
 </head>
 <body>
@@ -206,37 +280,45 @@
   <div class="header-bar">
     <h1>أوردرات Ready (<span id="totalCount">0</span>)</h1>
     <div>
-      <button class="btn" id="refreshBtn" onclick="startFetching()">تحديث البيانات</button>
-      <button class="btn" onclick="openSettings()">الإعدادات</button>
+      <button class="btn" id="refreshBtn" onclick="startFetching()">🔄 تحديث البيانات</button>
+      <button class="btn" onclick="openSettings()">⚙️ الإعدادات</button>
     </div>
   </div>
 
   <div class="card">
+    
+    <!-- Toolbar -->
+    <div class="toolbar" id="toolbar" style="display: none;">
+      <input type="text" id="searchInput" class="search-input" placeholder="بحث بالاسم، رقم الأوردر، أو الموبايل..." onkeyup="handleSearch()">
+      <button class="btn btn-primary" onclick="exportToExcel()">📊 تصدير XLSX</button>
+    </div>
+
+    <!-- Empty/Error State -->
     <div id="emptyState" class="state-box">
       <div class="icon" id="stateIcon">⌛</div>
       <p id="stateText">جاري تهيئة الأداة...</p>
       <div class="progress" id="stateProgress"></div>
     </div>
     
-    <div class="table-container" id="tableContainer">
+    <div class="table-container" id="tableContainer" style="display: none;">
       <table>
         <thead>
           <tr>
             <th>رقم الأوردر</th>
             <th>تاريخ الإنشاء</th>
-            <th>عدد المنتجات</th>
-            <th>اسم العميل</th>
-            <th>السعر</th>
-            <th>رقم التليفون</th>
-            <th>Courier</th>
-            <th>Zone</th>
+            <th>العميل</th>
+            <th>البيانات المالية</th>
+            <th>الشحن</th>
             <th>تاريخ التغليف</th>
-            <th class="col-half">Tags</th>
-            <th class="col-half">Notes</th>
+            <th class="col-wide">Tags</th>
+            <th class="col-wide">Notes</th>
           </tr>
         </thead>
+        <tbody id="skeletonBody" style="display: none;">
+          <!-- Skeleton rows injected via JS -->
+        </tbody>
         <tbody id="tableBody">
-          <!-- Rows -->
+          <!-- Real Rows -->
         </tbody>
       </table>
     </div>
@@ -266,9 +348,13 @@
   <script>
     const LS_URL_KEY = 'ready_orders_worker_url';
     const LS_SEC_KEY = 'ready_orders_worker_secret';
+    
+    // State Management
     let isFetching = false;
-    let currentTotalReady = 0;
+    let allOrders = []; // Store all fetched orders for search/export
+    let filteredOrders = [];
 
+    // --- Core Utilities ---
     function getConfig() {
       return { url: localStorage.getItem(LS_URL_KEY) || '', secret: localStorage.getItem(LS_SEC_KEY) || '' };
     }
@@ -278,13 +364,54 @@
       return config.url && config.secret;
     }
 
+    let toastTimeout;
     function showToast(message, type = 'success') {
       const toast = document.getElementById('toast');
+      clearTimeout(toastTimeout);
       toast.textContent = message;
       toast.className = `show ${type}`;
-      setTimeout(() => { toast.classList.remove('show'); }, 3000);
+      toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 3000);
     }
 
+    // Fallback copy method safe for iFrames
+    function copyToClipboard(text, label) {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.top = "0";
+      textArea.style.left = "0";
+      textArea.style.position = "fixed";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        showToast(`تم نسخ ${label}: ${text}`, 'info');
+      } catch (err) {
+        showToast('فشل النسخ', 'error');
+      }
+      document.body.removeChild(textArea);
+    }
+
+    // --- Formatters ---
+    function formatDate(isoString) {
+      if (!isoString) return '-';
+      const d = new Date(isoString);
+      const pad = n => String(n).padStart(2, '0');
+      return `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()}`;
+    }
+
+    function formatPackingDateOnly(isoString) {
+      if (!isoString) return '-';
+      const d = new Date(isoString);
+      const pad = n => String(n).padStart(2, '0');
+      const hours = d.getHours();
+      const ampm = hours >= 12 ? 'مساءً' : 'صباحاً';
+      return `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()}${ampm}`;
+    }
+
+    function formatNumber(num) { return Number(num).toLocaleString('en-US'); }
+
+    // --- Modal Actions ---
     function openSettings() {
       const config = getConfig();
       document.getElementById('workerUrlInput').value = config.url;
@@ -302,25 +429,33 @@
       startFetching();
     }
 
-    function formatDate(isoString) {
-      if (!isoString) return '-';
-      const d = new Date(isoString);
-      const pad = n => String(n).padStart(2, '0');
-      return `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()}`;
+    // --- Skeleton Loader Logic ---
+    function renderSkeleton() {
+      const tbody = document.getElementById('skeletonBody');
+      let html = '';
+      for(let i=0; i<8; i++) {
+        html += `<tr class="skeleton-row">
+          <td><div class="skeleton-box" style="width: 80px;"></div></td>
+          <td><div class="skeleton-box" style="width: 90px;"></div></td>
+          <td><div class="skeleton-box" style="width: 120px;"></div><div class="skeleton-box" style="width: 90px; margin-top: 6px; height: 12px;"></div></td>
+          <td><div class="skeleton-box" style="width: 100px;"></div></td>
+          <td><div class="skeleton-box" style="width: 80px;"></div><div class="skeleton-box" style="width: 60px; margin-top: 6px; height: 12px;"></div></td>
+          <td><div class="skeleton-box" style="width: 90px;"></div></td>
+          <td><div class="skeleton-box" style="width: 100%;"></div></td>
+          <td><div class="skeleton-box" style="width: 100%; height: 40px;"></div></td>
+        </tr>`;
+      }
+      tbody.innerHTML = html;
+      tbody.style.display = 'table-row-group';
+      document.getElementById('tableBody').style.display = 'none';
     }
 
-    // الدالة الجديدة لعرض التاريخ المدمج مع صباحاً/مساءً بدون الوقت
-    function formatPackingDateOnly(isoString) {
-      if (!isoString) return '-';
-      const d = new Date(isoString);
-      const pad = n => String(n).padStart(2, '0');
-      const hours = d.getHours();
-      const ampm = hours >= 12 ? 'مساءً' : 'صباحاً';
-      return `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()}${ampm}`;
+    function hideSkeleton() {
+      document.getElementById('skeletonBody').style.display = 'none';
+      document.getElementById('tableBody').style.display = 'table-row-group';
     }
 
-    function formatNumber(num) { return Number(num).toLocaleString('en-US'); }
-
+    // --- Main Fetching Logic ---
     async function startFetching() {
       if (!isConfigured()) { openSettings(); return; }
       if (isFetching) return;
@@ -328,20 +463,24 @@
       isFetching = true;
       document.getElementById('refreshBtn').disabled = true;
       
-      const tbody = document.getElementById('tableBody');
-      const tableContainer = document.getElementById('tableContainer');
       const emptyState = document.getElementById('emptyState');
+      const tableContainer = document.getElementById('tableContainer');
+      const toolbar = document.getElementById('toolbar');
       const progressText = document.getElementById('stateProgress');
       
-      // Reset UI
-      tbody.innerHTML = '';
-      tableContainer.style.display = 'none';
-      emptyState.style.display = 'flex';
-      document.getElementById('stateIcon').textContent = '🔄';
-      document.getElementById('stateText').textContent = 'جاري الاتصال بـ Shopify...';
-      progressText.textContent = '';
-      currentTotalReady = 0;
+      // Reset State
+      allOrders = [];
+      filteredOrders = [];
+      document.getElementById('searchInput').value = '';
+      document.getElementById('tableBody').innerHTML = '';
       document.getElementById('totalCount').textContent = '0';
+      
+      // UI to loading state
+      emptyState.style.display = 'none';
+      toolbar.style.display = 'flex';
+      tableContainer.style.display = 'block';
+      renderSkeleton();
+      progressText.textContent = '';
 
       const config = getConfig();
       let hasNextPage = true;
@@ -362,35 +501,30 @@
           if (!res.ok || !data.ok) throw new Error(data.error || 'خطأ في الاتصال');
 
           if (data.data && data.data.length > 0) {
-            appendRows(data.data);
-            currentTotalReady += data.data.length;
-            document.getElementById('totalCount').textContent = currentTotalReady;
+            allOrders = allOrders.concat(data.data);
+            filteredOrders = [...allOrders]; // reset filter
             
-            if (tableContainer.style.display === 'none') {
-              emptyState.style.display = 'none';
-              tableContainer.style.display = 'block';
-            }
+            hideSkeleton();
+            renderTable(filteredOrders);
+            document.getElementById('totalCount').textContent = allOrders.length;
           }
 
           pagesScanned++;
-          
-          if (tableContainer.style.display === 'none') {
-            progressText.textContent = `تم فحص ${pagesScanned * 50} أوردر...`;
-          }
-
           hasNextPage = data.pageInfo.hasNextPage;
           cursor = data.pageInfo.endCursor;
         }
 
+        // Fetching Complete
         isFetching = false;
         document.getElementById('refreshBtn').disabled = false;
+        hideSkeleton();
         
-        if (currentTotalReady === 0) {
+        if (allOrders.length === 0) {
           emptyState.style.display = 'flex';
           tableContainer.style.display = 'none';
+          toolbar.style.display = 'none';
           document.getElementById('stateIcon').textContent = '📦';
           document.getElementById('stateText').textContent = 'لا توجد أوردرات جاهزة (Ready) منذ 1 إبريل';
-          progressText.textContent = '';
         } else {
           showToast('تم الانتهاء من جلب جميع الأوردرات');
         }
@@ -398,54 +532,166 @@
       } catch (error) {
         isFetching = false;
         document.getElementById('refreshBtn').disabled = false;
-        emptyState.style.display = 'flex';
-        tableContainer.style.display = 'none';
-        document.getElementById('stateIcon').textContent = '❌';
-        document.getElementById('stateText').textContent = error.message;
-        document.getElementById('stateText').style.color = 'var(--red)';
-        progressText.textContent = '';
+        hideSkeleton();
+        
+        if (allOrders.length === 0) {
+          emptyState.style.display = 'flex';
+          tableContainer.style.display = 'none';
+          toolbar.style.display = 'none';
+          document.getElementById('stateIcon').textContent = '❌';
+          document.getElementById('stateText').textContent = error.message;
+          document.getElementById('stateText').style.color = 'var(--red)';
+        }
         showToast(error.message, 'error');
       }
     }
 
-    function appendRows(orders) {
+    // --- Rendering ---
+    function renderTable(orders) {
       const tbody = document.getElementById('tableBody');
       let html = '';
       
       orders.forEach(order => {
-        // تمييز الـ Tag لو كان Packed
+        // Handle Tags
         const tagsHtml = order.tags.map(t => {
           const isPacked = t.toLowerCase() === 'packed';
           const extraClass = isPacked ? 'tag-packed' : '';
           return `<span class="tag-pill ${extraClass}">${t}</span>`;
         }).join('');
 
+        // Handle Clean Phone for copy
+        const cleanPhone = order.phone.replace(/[^0-9+]/g, '');
+
         html += `
           <tr>
-            <td><span class="mono">${order.name}</span></td>
+            <td>
+              <span class="mono copyable" onclick="copyToClipboard('${order.name}', 'رقم الأوردر')" title="نسخ رقم الأوردر">${order.name}</span>
+            </td>
             <td><span class="mono">${formatDate(order.createdAt)}</span></td>
-            <td><span class="mono">${formatNumber(order.totalItems)}</span></td>
-            <td>${order.customerName}</td>
-            <td><span class="mono">${formatNumber(order.totalPrice)}</span></td>
-            <td><span class="mono">${order.phone}</span></td>
-            <td><span class="status-badge">${order.courier}</span></td>
-            <td>${order.zone}</td>
+            <td>
+              <div>${order.customerName}</div>
+              <span class="mono sub-text copyable" onclick="copyToClipboard('${cleanPhone}', 'رقم التليفون')" title="نسخ رقم التليفون" dir="ltr">${order.phone}</span>
+            </td>
+            <td>
+              <div style="display: flex; align-items: center;">
+                <span class="count-pill" title="عدد المنتجات">${formatNumber(order.totalItems)}</span>
+                <span class="mono">${formatNumber(order.totalPrice)}</span>
+              </div>
+            </td>
+            <td>
+              <span class="status-badge">${order.courier}</span>
+              <span class="sub-text">${order.zone !== '-' ? order.zone : 'بدون زون'}</span>
+            </td>
             <td><span class="mono">${formatPackingDateOnly(order.packingDate)}</span></td>
-            <td class="cell-wrap">${tagsHtml || '-'}</td>
-            <td class="notes-cell cell-wrap">${order.note || '-'}</td>
+            <td>${tagsHtml || '-'}</td>
+            <td>
+              <div class="notes-container">${order.note || '-'}</div>
+            </td>
           </tr>
         `;
       });
 
-      tbody.insertAdjacentHTML('beforeend', html);
+      tbody.innerHTML = html;
     }
 
+    // --- Local Search ---
+    function handleSearch() {
+      const term = document.getElementById('searchInput').value.trim().toLowerCase();
+      
+      if (!term) {
+        filteredOrders = [...allOrders];
+      } else {
+        filteredOrders = allOrders.filter(order => {
+          const nameMatch = (order.customerName || '').toLowerCase().includes(term);
+          const idMatch = (order.name || '').toLowerCase().includes(term);
+          const phoneMatch = (order.phone || '').toLowerCase().includes(term);
+          return nameMatch || idMatch || phoneMatch;
+        });
+      }
+      
+      renderTable(filteredOrders);
+      document.getElementById('totalCount').textContent = filteredOrders.length;
+    }
+
+    // --- Excel Export ---
+    async function exportToExcel() {
+      if (filteredOrders.length === 0) {
+        showToast('لا توجد بيانات للتصدير', 'error');
+        return;
+      }
+
+      showToast('جاري تحضير ملف الإكسيل...', 'info');
+      
+      const workbook = new ExcelJS.Workbook();
+      workbook.views = [{ rightToLeft: true }];
+      
+      const sheet = workbook.addWorksheet('Ready Orders');
+      sheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+      // Define Columns
+      sheet.columns = [
+        { header: 'رقم الأوردر', key: 'name', width: 15 },
+        { header: 'تاريخ الإنشاء', key: 'createdAt', width: 15 },
+        { header: 'اسم العميل', key: 'customerName', width: 25 },
+        { header: 'رقم التليفون', key: 'phone', width: 20 },
+        { header: 'عدد المنتجات', key: 'totalItems', width: 15 },
+        { header: 'السعر', key: 'totalPrice', width: 15 },
+        { header: 'Courier', key: 'courier', width: 15 },
+        { header: 'Zone', key: 'zone', width: 20 },
+        { header: 'تاريخ التغليف', key: 'packingDate', width: 20 },
+        { header: 'Tags', key: 'tags', width: 30 },
+        { header: 'Notes', key: 'note', width: 40 }
+      ];
+
+      // Styling Header
+      sheet.getRow(1).font = { bold: true };
+      sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
+
+      // Add Data
+      filteredOrders.forEach(order => {
+        const row = sheet.addRow({
+          name: order.name,
+          createdAt: formatDate(order.createdAt),
+          customerName: order.customerName,
+          phone: order.phone,
+          totalItems: order.totalItems,
+          totalPrice: order.totalPrice || null,
+          courier: order.courier,
+          zone: order.zone !== '-' ? order.zone : null,
+          packingDate: formatPackingDateOnly(order.packingDate),
+          tags: order.tags.join(', '),
+          note: order.note || null
+        });
+
+        // Format Currency
+        row.getCell('totalPrice').numFmt = '#,##0';
+      });
+
+      // Generate & Download
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      
+      // Filename includes today's date
+      const today = new Date();
+      const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      link.download = `Ready_Orders_${dateStr}.xlsx`;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      showToast('تم تحميل الملف بنجاح');
+    }
+
+    // --- Init ---
     window.onload = () => {
       if (isConfigured()) {
         startFetching();
       } else {
         document.getElementById('stateIcon').textContent = '⚙️';
-        document.getElementById('stateText').textContent = 'يرجى إدخال إعدادات الـ Worker أولاً';
+        document.getElementById('stateText').textContent = 'يرجى إدخال إعدادات الـ Worker أولاً من زر الإعدادات بالخارج';
       }
     };
   </script>
