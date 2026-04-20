@@ -145,7 +145,7 @@
     thead tr:nth-child(2) th {
       background-color: var(--surface-2);
       position: sticky;
-      top: 45px; /* Offset for the first row */
+      top: 45px;
       z-index: 9;
       padding: 6px 8px;
       border-bottom: 2px solid var(--border-strong);
@@ -409,7 +409,7 @@
     let isFetching = false;
     let allOrders = []; 
     let filteredOrders = [];
-    let selectedOrderIds = new Set(); // To keep track of checked rows
+    let selectedOrderIds = new Set();
 
     // --- Core Utilities ---
     function getConfig() {
@@ -462,7 +462,7 @@
       const pad = n => String(n).padStart(2, '0');
       const hours = d.getHours();
       const ampm = hours >= 12 ? 'مساءً' : 'صباحاً';
-      return `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()}${ampm}`;
+      return `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()} ${ampm}`;
     }
 
     function formatNumber(num) { return Number(num).toLocaleString('en-US'); }
@@ -523,7 +523,6 @@
       const emptyState = document.getElementById('emptyState');
       const tableContainer = document.getElementById('tableContainer');
       const toolbar = document.getElementById('toolbar');
-      const progressText = document.getElementById('stateProgress');
       
       // Reset State
       allOrders = [];
@@ -543,12 +542,10 @@
       toolbar.style.display = 'flex';
       tableContainer.style.display = 'block';
       renderSkeleton();
-      progressText.textContent = '';
 
       const config = getConfig();
       let hasNextPage = true;
       let cursor = null;
-      let pagesScanned = 0;
 
       try {
         while (hasNextPage) {
@@ -564,7 +561,6 @@
           if (!res.ok || !data.ok) throw new Error(data.error || 'خطأ في الاتصال');
 
           if (data.data && data.data.length > 0) {
-            // Process dates for easier searching later
             const processedData = data.data.map(o => ({
               ...o,
               _formattedDate: formatDate(o.createdAt),
@@ -572,13 +568,11 @@
             }));
             
             allOrders = allOrders.concat(processedData);
-            applyFilters(); // Re-apply filters to update view
-            
+            applyFilters();
             hideSkeleton();
             document.getElementById('totalCount').textContent = allOrders.length;
           }
 
-          pagesScanned++;
           hasNextPage = data.pageInfo.hasNextPage;
           cursor = data.pageInfo.endCursor;
         }
@@ -593,9 +587,9 @@
           tableContainer.style.display = 'none';
           toolbar.style.display = 'none';
           document.getElementById('stateIcon').textContent = '📦';
-          document.getElementById('stateText').textContent = 'لا توجد أوردرات جاهزة (Ready) منذ 1 إبريل';
+          document.getElementById('stateText').textContent = 'لا توجد أوردرات جاهزة (Ready) من 2026';
         } else {
-          showToast('تم الانتهاء من جلب جميع الأوردرات');
+          showToast(`تم تحميل ${allOrders.length.toLocaleString('en-US')} أوردر بنجاح`);
         }
 
       } catch (error) {
@@ -623,13 +617,11 @@
         selectedOrderIds.delete(orderId);
       }
       
-      // Update row background
       const row = document.getElementById(`row-${orderId}`);
       if (row) {
         isChecked ? row.classList.add('selected') : row.classList.remove('selected');
       }
 
-      // Check if all visible rows are selected to update the header checkbox
       const allVisibleSelected = filteredOrders.length > 0 && filteredOrders.every(o => selectedOrderIds.has(o.id));
       document.getElementById('selectAllCheckbox').checked = allVisibleSelected;
       
@@ -637,7 +629,6 @@
     }
 
     function toggleSelectAll(isChecked) {
-      // Apply to CURRENTLY FILTERED orders only
       filteredOrders.forEach(o => {
         if (isChecked) {
           selectedOrderIds.add(o.id);
@@ -651,7 +642,6 @@
         }
       });
       
-      // Update all visible checkboxes
       document.querySelectorAll('.row-checkbox').forEach(cb => {
         cb.checked = isChecked;
       });
@@ -662,7 +652,7 @@
     function updateExportButtonUI() {
       const btn = document.getElementById('exportBtn');
       if (selectedOrderIds.size > 0) {
-        btn.innerHTML = `📊 تصدير المحدد (${selectedOrderIds.size})`;
+        btn.innerHTML = `📊 تصدير المحدد (${selectedOrderIds.size.toLocaleString('en-US')})`;
         btn.classList.add('active');
       } else {
         btn.innerHTML = `📊 تصدير XLSX`;
@@ -674,18 +664,16 @@
     function applyFilters() {
       const globalTerm = document.getElementById('globalSearchInput').value.trim().toLowerCase();
       
-      // Get column filter values
-      const f_order = document.getElementById('filter_order').value.trim().toLowerCase();
-      const f_date = document.getElementById('filter_date').value.trim().toLowerCase();
+      const f_order    = document.getElementById('filter_order').value.trim().toLowerCase();
+      const f_date     = document.getElementById('filter_date').value.trim().toLowerCase();
       const f_customer = document.getElementById('filter_customer').value.trim().toLowerCase();
-      const f_finance = document.getElementById('filter_finance').value.trim().toLowerCase();
+      const f_finance  = document.getElementById('filter_finance').value.trim().toLowerCase();
       const f_shipping = document.getElementById('filter_shipping').value.trim().toLowerCase();
       const f_packdate = document.getElementById('filter_packdate').value.trim().toLowerCase();
-      const f_tags = document.getElementById('filter_tags').value.trim().toLowerCase();
-      const f_notes = document.getElementById('filter_notes').value.trim().toLowerCase();
+      const f_tags     = document.getElementById('filter_tags').value.trim().toLowerCase();
+      const f_notes    = document.getElementById('filter_notes').value.trim().toLowerCase();
 
       filteredOrders = allOrders.filter(order => {
-        // 1. Global Search
         if (globalTerm) {
           const globalMatch = 
             (order.name || '').toLowerCase().includes(globalTerm) ||
@@ -694,11 +682,10 @@
           if (!globalMatch) return false;
         }
 
-        // 2. Column Filters
-        if (f_order && !(order.name || '').toLowerCase().includes(f_order)) return false;
-        if (f_date && !order._formattedDate.includes(f_date)) return false;
+        if (f_order    && !(order.name || '').toLowerCase().includes(f_order)) return false;
+        if (f_date     && !order._formattedDate.includes(f_date)) return false;
         if (f_customer && !((order.customerName || '').toLowerCase().includes(f_customer) || (order.phone || '').toLowerCase().includes(f_customer))) return false;
-        if (f_finance && !(String(order.totalPrice).includes(f_finance) || String(order.totalItems).includes(f_finance))) return false;
+        if (f_finance  && !(String(order.totalPrice).includes(f_finance) || String(order.totalItems).includes(f_finance))) return false;
         if (f_shipping && !((order.courier || '').toLowerCase().includes(f_shipping) || (order.zone || '').toLowerCase().includes(f_shipping))) return false;
         if (f_packdate && !order._formattedPackDate.includes(f_packdate)) return false;
         
@@ -714,7 +701,6 @@
 
       renderTable(filteredOrders);
       
-      // Check header checkbox state after filter changes
       const allVisibleSelected = filteredOrders.length > 0 && filteredOrders.every(o => selectedOrderIds.has(o.id));
       document.getElementById('selectAllCheckbox').checked = allVisibleSelected;
     }
@@ -722,31 +708,31 @@
     // --- Rendering ---
     function renderTable(orders) {
       const tbody = document.getElementById('tableBody');
-      let html = '';
       
       if (orders.length === 0) {
         tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:40px; color:var(--text-muted);">لا توجد نتائج مطابقة للبحث</td></tr>`;
         return;
       }
       
+      let html = '';
       orders.forEach(order => {
         const isSelected = selectedOrderIds.has(order.id);
         const rowClass = isSelected ? 'selected' : '';
 
-        // Handle Tags
+        // Escape ID for use in HTML attributes (GID contains slashes and colons)
+        const safeId = encodeURIComponent(order.id);
+
         const tagsHtml = order.tags.map(t => {
           const isPacked = t.toLowerCase() === 'packed';
-          const extraClass = isPacked ? 'tag-packed' : '';
-          return `<span class="tag-pill ${extraClass}">${t}</span>`;
+          return `<span class="tag-pill ${isPacked ? 'tag-packed' : ''}">${t}</span>`;
         }).join('');
 
-        // Handle Clean Phone for copy
         const cleanPhone = order.phone.replace(/[^0-9+]/g, '');
 
         html += `
-          <tr id="row-${order.id}" class="${rowClass}">
+          <tr id="row-${safeId}" class="${rowClass}">
             <td class="checkbox-cell">
-              <input type="checkbox" class="row-checkbox" value="${order.id}" ${isSelected ? 'checked' : ''} onchange="toggleRowSelection('${order.id}', this.checked)">
+              <input type="checkbox" class="row-checkbox" data-id="${order.id}" ${isSelected ? 'checked' : ''} onchange="toggleRowSelection(decodeURIComponent(this.dataset.id), this.checked)">
             </td>
             <td>
               <span class="mono copyable" onclick="copyToClipboard('${order.name}', 'رقم الأوردر')" title="نسخ رقم الأوردر">${order.name}</span>
@@ -780,7 +766,6 @@
 
     // --- Excel Export ---
     async function exportToExcel() {
-      // Determine what to export: selected OR filtered
       const ordersToExport = selectedOrderIds.size > 0 
         ? allOrders.filter(o => selectedOrderIds.has(o.id)) 
         : filteredOrders;
@@ -790,61 +775,56 @@
         return;
       }
 
-      showToast(`جاري تحضير ملف الإكسيل (${ordersToExport.length} أوردر)...`, 'info');
+      showToast(`جاري تحضير ملف الإكسيل (${ordersToExport.length.toLocaleString('en-US')} أوردر)...`, 'info');
       
       const workbook = new ExcelJS.Workbook();
       workbook.views = [{ rightToLeft: true }];
       
       const sheet = workbook.addWorksheet('Ready Orders');
-      sheet.views = [{ state: 'frozen', ySplit: 1 }];
+      sheet.views = [{ state: 'frozen', ySplit: 1, rightToLeft: true }];
 
-      // Define Columns
       sheet.columns = [
-        { header: 'رقم الأوردر', key: 'name', width: 15 },
-        { header: 'تاريخ الإنشاء', key: 'createdAt', width: 15 },
-        { header: 'اسم العميل', key: 'customerName', width: 25 },
-        { header: 'رقم التليفون', key: 'phone', width: 20 },
-        { header: 'عدد المنتجات', key: 'totalItems', width: 15 },
-        { header: 'السعر', key: 'totalPrice', width: 15 },
-        { header: 'Courier', key: 'courier', width: 15 },
-        { header: 'Zone', key: 'zone', width: 20 },
-        { header: 'تاريخ التغليف', key: 'packingDate', width: 20 },
-        { header: 'Tags', key: 'tags', width: 30 },
-        { header: 'Notes', key: 'note', width: 40 }
+        { header: 'رقم الأوردر',   key: 'name',        width: 15 },
+        { header: 'تاريخ الإنشاء', key: 'createdAt',   width: 15 },
+        { header: 'اسم العميل',    key: 'customerName', width: 25 },
+        { header: 'رقم التليفون',  key: 'phone',        width: 20 },
+        { header: 'عدد المنتجات',  key: 'totalItems',   width: 15 },
+        { header: 'المبلغ المستحق', key: 'totalPrice',  width: 15 },
+        { header: 'Courier',       key: 'courier',      width: 15 },
+        { header: 'Zone',          key: 'zone',         width: 20 },
+        { header: 'تاريخ التغليف', key: 'packingDate',  width: 20 },
+        { header: 'Tags',          key: 'tags',         width: 30 },
+        { header: 'Notes',         key: 'note',         width: 40 },
       ];
 
-      // Styling Header
       sheet.getRow(1).font = { bold: true };
       sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
 
-      // Add Data
       ordersToExport.forEach(order => {
         const row = sheet.addRow({
-          name: order.name,
-          createdAt: order._formattedDate,
+          name:        order.name,
+          createdAt:   order._formattedDate,
           customerName: order.customerName,
-          phone: order.phone,
-          totalItems: order.totalItems,
-          totalPrice: order.totalPrice || null,
-          courier: order.courier,
-          zone: order.zone !== '-' ? order.zone : null,
+          phone:       order.phone,
+          totalItems:  order.totalItems,
+          totalPrice:  order.totalPrice ? parseFloat(order.totalPrice) : null,
+          courier:     order.courier,
+          zone:        order.zone !== '-' ? order.zone : null,
           packingDate: order._formattedPackDate,
-          tags: order.tags.join(', '),
-          note: order.note || null
+          tags:        order.tags.join(', '),
+          note:        order.note || null,
         });
 
-        // Format Currency
         row.getCell('totalPrice').numFmt = '#,##0';
       });
 
-      // Generate & Download
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       
       const today = new Date();
-      const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
       link.download = `Ready_Orders_${dateStr}.xlsx`;
       
       document.body.appendChild(link);
@@ -852,11 +832,6 @@
       document.body.removeChild(link);
       
       showToast('تم تحميل الملف بنجاح');
-      
-      // الاختياري: لو حابب تفك التحديد بعد التصدير مباشرة
-      // selectedOrderIds.clear();
-      // applyFilters();
-      // updateExportButtonUI();
     }
 
     // --- Init ---
@@ -865,7 +840,7 @@
         startFetching();
       } else {
         document.getElementById('stateIcon').textContent = '⚙️';
-        document.getElementById('stateText').textContent = 'يرجى إدخال إعدادات الـ Worker أولاً من زر الإعدادات بالخارج';
+        document.getElementById('stateText').textContent = 'يرجى إدخال إعدادات الـ Worker أولاً من زر الإعدادات بالأعلى';
       }
     };
   </script>
